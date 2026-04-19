@@ -1,9 +1,0 @@
-.git
-node_modules
-android
-ios
-.expo
-dist
-*.log
-.DS_Store
-AppData

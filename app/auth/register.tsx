@@ -27,10 +27,9 @@ export default function RegisterScreen() {
   });
 
   const validate = () => {
-    // ... (驗證邏輯保持不變)
     const { full_name, username, password, confirmPassword, phone } = form;
     let emptyFields = [];
-    if (!full_name.trim()) emptyFields.push("真實姓名");
+    if (!full_name.trim()) emptyFields.push("暱稱");
     if (!username.trim()) emptyFields.push("帳號");
     if (!password) emptyFields.push("密碼");
     if (!confirmPassword) emptyFields.push("確認密碼");
@@ -63,7 +62,6 @@ export default function RegisterScreen() {
 
   const handleRegister = async () => {
     if (!validate()) return;
-
     try {
       const res = await fetch(`${BASE_URL}/register`, {
         method: "POST",
@@ -71,7 +69,6 @@ export default function RegisterScreen() {
         body: JSON.stringify(form),
       });
       const result = await res.json();
-
       if (result.success) {
         Alert.alert("註冊成功", "帳號已建立，請登入使用。");
         await AsyncStorage.setItem("user", JSON.stringify(result.user));
@@ -90,12 +87,15 @@ export default function RegisterScreen() {
     <ScrollView contentContainerStyle={styles.container}>
       <Text style={styles.title}>建立新帳號</Text>
 
-      {/* 角色選擇 */}
       <Text style={styles.label}>您的身分</Text>
       <View style={styles.roleRow}>
         <TouchableOpacity
           style={[styles.roleBtn, form.role === "blind" && styles.blindActive]}
           onPress={() => setForm({ ...form, role: "blind" })}
+          accessible={true}
+          accessibilityRole="radio"
+          accessibilityLabel="身分選擇，視障者"
+          accessibilityState={{ selected: form.role === "blind" }}
         >
           <Text
             style={[
@@ -106,12 +106,17 @@ export default function RegisterScreen() {
             視障者
           </Text>
         </TouchableOpacity>
+
         <TouchableOpacity
           style={[
             styles.roleBtn,
             form.role === "caregiver" && styles.caregiverActive,
           ]}
           onPress={() => setForm({ ...form, role: "caregiver" })}
+          accessible={true}
+          accessibilityRole="radio"
+          accessibilityLabel="身分選擇，照護者或家屬"
+          accessibilityState={{ selected: form.role === "caregiver" }}
         >
           <Text
             style={[
@@ -128,40 +133,60 @@ export default function RegisterScreen() {
         style={styles.input}
         placeholder="暱稱 *"
         onChangeText={(v) => setForm({ ...form, full_name: v })}
+        accessible={true}
+        accessibilityLabel="暱稱"
       />
       <TextInput
         style={styles.input}
-        placeholder="登入帳號 * (英文數字)"
+        placeholder="登入帳號 *"
         autoCapitalize="none"
         onChangeText={(v) => setForm({ ...form, username: v })}
+        accessible={true}
+        accessibilityLabel="登入帳號"
+        accessibilityHint="僅限英文與數字"
       />
       <TextInput
         style={styles.input}
-        placeholder="設定密碼 * (需含大寫)"
+        placeholder="設定密碼 *"
         secureTextEntry
         onChangeText={(v) => setForm({ ...form, password: v })}
+        accessible={true}
+        accessibilityLabel="密碼"
+        accessibilityHint="需包含至少一個大寫字母"
       />
       <TextInput
         style={styles.input}
         placeholder="確認密碼 *"
         secureTextEntry
         onChangeText={(v) => setForm({ ...form, confirmPassword: v })}
+        accessible={true}
+        accessibilityLabel="確認密碼"
       />
       <TextInput
         style={styles.input}
-        placeholder="電話 * (09xxxxxxxx)"
+        placeholder="連絡電話 *"
         keyboardType="phone-pad"
         onChangeText={(v) => setForm({ ...form, phone: v })}
+        accessible={true}
+        accessibilityLabel="連絡電話"
+        accessibilityHint="格式為 09 開頭的 10 位數字"
       />
       <TextInput
         style={styles.input}
         placeholder="信箱 (選填)"
         keyboardType="email-address"
-        autoCapitalize="none"
         onChangeText={(v) => setForm({ ...form, email: v })}
+        accessible={true}
+        accessibilityLabel="電子信箱"
       />
 
-      <TouchableOpacity style={styles.submitBtn} onPress={handleRegister}>
+      <TouchableOpacity
+        style={styles.submitBtn}
+        onPress={handleRegister}
+        accessible={true}
+        accessibilityLabel="送出註冊"
+        accessibilityRole="button"
+      >
         <Text style={styles.submitText}>確認註冊</Text>
       </TouchableOpacity>
     </ScrollView>

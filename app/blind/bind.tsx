@@ -2,12 +2,12 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Stack, useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
-    ActivityIndicator,
-    Dimensions,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Dimensions,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import QRCode from "react-native-qrcode-svg";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -18,7 +18,6 @@ export default function BlindBindScreen() {
   const router = useRouter();
   const [user, setUser] = useState<any>(null);
 
-  // 初始化取得使用者資料
   useEffect(() => {
     const fetchUser = async () => {
       try {
@@ -43,14 +42,21 @@ export default function BlindBindScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* 設定標題，這裡會覆蓋 _layout 的全域標題設定 */}
       <Stack.Screen options={{ title: "添加聯絡人" }} />
 
-      <View style={styles.innerContainer}>
+      <View
+        style={styles.innerContainer}
+        accessible={true}
+        accessibilityLabel=" QR Code 展示頁面"
+      >
         <Text style={styles.title}>我的 QR Code</Text>
         <Text style={styles.subtitle}>請將畫面出示給照護者掃描</Text>
 
-        <View style={styles.qrCard}>
+        <View
+          style={styles.qrCard}
+          accessible={true}
+          accessibilityLabel={`請將螢幕對準照護者的相機，此 QR Code 代表您的使用者帳號：${user.full_name}`}
+        >
           <QRCode
             value={JSON.stringify({
               type: "BIND",
@@ -63,10 +69,12 @@ export default function BlindBindScreen() {
           <Text style={styles.qrName}>{user.full_name}</Text>
         </View>
 
-        {/* 修改：點擊後強制跳轉至聯絡人列表頁並清除導航堆疊 */}
         <TouchableOpacity
           style={styles.backBtn}
           onPress={() => router.replace("/blind/contacts")}
+          accessible={true}
+          accessibilityRole="button"
+          accessibilityLabel="取消，返回聯絡人列表"
         >
           <Text style={styles.backBtnText}>取消</Text>
         </TouchableOpacity>

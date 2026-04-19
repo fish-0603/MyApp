@@ -19,7 +19,6 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
-  // 身分轉譯函數，用於顯示友善的中文訊息
   const getRoleDisplayName = (role: string | string[] | undefined) => {
     return role === "blind" ? "視障者" : "照護者/家屬";
   };
@@ -47,19 +46,16 @@ export default function Login() {
         await AsyncStorage.setItem("user", JSON.stringify(data.user));
         router.replace(data.user.role === "blind" ? "/blind" : "/caregiver");
       } else {
-        // 判斷是否為身分不符的錯誤 (根據後端回傳的訊息結構)
         if (data.message.includes("屬於") || data.message.includes("身分")) {
           const actualRoleName = data.message.includes("blind")
             ? "視障者"
             : "照護者/家屬";
           const expectedRoleName = getRoleDisplayName(selectedRole);
-
           Alert.alert(
             "身分不符",
             `此帳號註冊身分為「${actualRoleName}」，無法以「${expectedRoleName}」身分登入。`,
           );
         } else {
-          // 一般登入失敗 (如帳號不存在、密碼錯誤)
           Alert.alert("登入失敗", data.message);
         }
       }
@@ -72,7 +68,14 @@ export default function Login() {
 
   return (
     <View style={styles.container}>
-      <TouchableOpacity onPress={() => router.back()} style={styles.backLink}>
+      {/* 導覽按鈕 */}
+      <TouchableOpacity
+        onPress={() => router.back()}
+        style={styles.backLink}
+        accessible={true}
+        accessibilityLabel="返回，重新選擇身分"
+        accessibilityRole="button"
+      >
         <Text style={styles.backLinkText}>← 重新選擇身分</Text>
       </TouchableOpacity>
 
@@ -80,23 +83,37 @@ export default function Login() {
         {selectedRole === "blind" ? "視障者登入" : "照護者/家屬登入"}
       </Text>
 
+      {/* 帳號輸入框 */}
       <TextInput
         placeholder="請輸入帳號"
         style={styles.input}
         onChangeText={setUsername}
         autoCapitalize="none"
+        accessible={true}
+        accessibilityLabel="帳號"
+        accessibilityHint="請輸入您的帳號"
       />
+
+      {/* 密碼輸入框 */}
       <TextInput
         placeholder="請輸入密碼"
         style={styles.input}
         onChangeText={setPassword}
         secureTextEntry
+        accessible={true}
+        accessibilityLabel="密碼"
+        accessibilityHint="請輸入您的密碼"
       />
 
+      {/* 登入按鈕 */}
       <TouchableOpacity
         style={styles.btnBlue}
         onPress={handleLogin}
         disabled={loading}
+        accessible={true}
+        accessibilityLabel="登入"
+        accessibilityHint="點擊後將開始驗證帳號密碼"
+        accessibilityRole="button"
       >
         {loading ? (
           <ActivityIndicator color="#fff" />
@@ -105,6 +122,7 @@ export default function Login() {
         )}
       </TouchableOpacity>
 
+      {/* 註冊連結 */}
       <TouchableOpacity
         onPress={() =>
           router.push({
@@ -112,6 +130,9 @@ export default function Login() {
             params: { selectedRole },
           } as any)
         }
+        accessible={true}
+        accessibilityLabel="沒有帳號，前往註冊"
+        accessibilityRole="link"
       >
         <Text style={styles.link}>沒有帳號？前往註冊</Text>
       </TouchableOpacity>
@@ -140,6 +161,8 @@ const styles = StyleSheet.create({
     padding: 15,
     borderRadius: 10,
     marginBottom: 15,
+    borderWidth: 1,
+    borderColor: "#ddd",
   },
   btnBlue: {
     backgroundColor: "#007AFF",
