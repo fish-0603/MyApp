@@ -28,21 +28,15 @@ export default function ContactListScreen() {
       const user = JSON.parse(data);
       setUserId(user.id);
 
-      const url = `${BASE_URL}/contacts/${user.id}`;
-      const res = await fetch(url);
-      const text = await res.text();
+      const res = await fetch(`${BASE_URL}/contacts/${user.id}`);
+      const result = await res.json();
 
-      const jsonStart = text.indexOf("{");
-      const jsonEnd = text.lastIndexOf("}");
-      const cleanJson = text.substring(jsonStart, jsonEnd + 1);
-
-      const result = JSON.parse(cleanJson);
       if (result.success) {
         setContacts(result.contacts);
       }
     } catch (e) {
       console.error("載入失敗:", e);
-      Alert.alert("連線錯誤", "無法解析伺服器回應");
+      Alert.alert("錯誤", "無法讀取聯絡人清單");
     } finally {
       setLoading(false);
     }
@@ -54,25 +48,8 @@ export default function ContactListScreen() {
 
   const emergencyPerson = contacts.find((c) => c.is_emergency);
 
-  const handleDeleteContact = (connectionId: number, name: string) => {
-    Alert.alert("刪除聯絡人", `確定要解除與「${name}」的綁定關係嗎？`, [
-      { text: "取消", style: "cancel" },
-      {
-        text: "確定刪除",
-        style: "destructive",
-        onPress: async () => {
-          const res = await fetch(`${BASE_URL}/reject-bind`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ connectionId }),
-          });
-          if ((await res.json()).success) loadContacts();
-        },
-      },
-    ]);
-  };
-
-  const handleSetEmergency = (connectionId: number, name: string) => {
+  // 1. 設定緊急聯絡人 (加入確認視窗)
+  const handleSetEmergency = async (connectionId: number, name: string) => {
     if (emergencyPerson) {
       Alert.alert(
         "提醒",
@@ -80,38 +57,66 @@ export default function ContactListScreen() {
       );
       return;
     }
-    Alert.alert("確認設定", `是否確定將「${name}」設為緊急聯絡人？`, [
+    Alert.alert("設定確認", `確定將「${name}」設為緊急聯絡人嗎？`, [
       { text: "取消", style: "cancel" },
       {
-        text: "確定設定",
+        text: "確定",
         onPress: async () => {
           const res = await fetch(`${BASE_URL}/set-emergency`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ blindId: userId, connectionId }),
           });
-          if ((await res.json()).success) {
+          const result = await res.json();
+          if (result.success) {
+            Alert.alert("成功", `已將 ${name} 設為緊急聯絡人`);
             loadContacts();
-            Alert.alert("成功", "設定完成");
           }
         },
       },
     ]);
   };
 
-  const handleRemoveEmergency = (connectionId: number) => {
-    Alert.alert("取消設定", "確定要取消此緊急聯絡人嗎？", [
-      { text: "保留", style: "cancel" },
+  // 2. 取消緊急聯絡人 (加入確認視窗)
+  const handleRemoveEmergency = async (connectionId: number) => {
+    Alert.alert("取消確認", "確定要取消目前的緊急聯絡人設定嗎？", [
+      { text: "取消", style: "cancel" },
       {
-        text: "確定取消",
-        style: "destructive",
+        text: "確定",
         onPress: async () => {
           const res = await fetch(`${BASE_URL}/set-emergency`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ blindId: userId, connectionId: -1 }),
           });
-          if ((await res.json()).success) loadContacts();
+          const result = await res.json();
+          if (result.success) {
+            Alert.alert("成功", "已取消緊急聯絡人設定");
+            loadContacts();
+          }
+        },
+      },
+    ]);
+  };
+
+  // 3. 刪除聯絡人 (加入確認視窗)
+  const handleDeleteContact = async (connectionId: number) => {
+    Alert.alert("刪除確認", "確定要將此聯絡人從好友名單移除嗎？", [
+      { text: "取消", style: "cancel" },
+      {
+        text: "刪除",
+        style: "destructive",
+        onPress: async () => {
+          const res = await fetch(`${BASE_URL}/reject-bind`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ connectionId }),
+          });
+          const result = await res.json();
+          if (result.success) {
+            Alert.alert("已移除", "聯絡人已成功刪除");
+            loadContacts();
+          }
         },
       },
     ]);
@@ -124,10 +129,7 @@ export default function ContactListScreen() {
     item: any;
     isEmergency?: boolean;
   }) => (
-    <View
-      style={[styles.card, isEmergency && styles.emergencyCard]}
-      accessible={true}
-    >
+    <View style={[styles.card, isEmergency && styles.emergencyCard]}>
       <View style={styles.nameSection}>
         <Text style={styles.nameText}>{item.username}</Text>
         <Text style={styles.phoneText}>{item.phone}</Text>
@@ -137,8 +139,6 @@ export default function ContactListScreen() {
           <TouchableOpacity
             style={styles.removeBtn}
             onPress={() => handleRemoveEmergency(item.connection_id)}
-            accessibilityRole="button"
-            accessibilityLabel={`取消緊急聯絡人，${item.username}`}
           >
             <Text style={styles.removeBtnText}>取消緊急</Text>
           </TouchableOpacity>
@@ -149,18 +149,12 @@ export default function ContactListScreen() {
               onPress={() =>
                 handleSetEmergency(item.connection_id, item.username)
               }
-              accessibilityRole="button"
-              accessibilityLabel={`將 ${item.username} 設為緊急聯絡人`}
             >
               <Text style={styles.setBtnText}>設為緊急</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.deleteBtn}
-              onPress={() =>
-                handleDeleteContact(item.connection_id, item.username)
-              }
-              accessibilityRole="button"
-              accessibilityLabel={`刪除聯絡人，${item.username}`}
+              onPress={() => handleDeleteContact(item.connection_id)}
             >
               <Text style={styles.deleteBtnText}>刪除</Text>
             </TouchableOpacity>
@@ -172,16 +166,12 @@ export default function ContactListScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.headerRow}>
-        <TouchableOpacity
-          style={styles.addBtn}
-          onPress={() => router.push("/blind/bind")}
-          accessibilityRole="button"
-          accessibilityLabel="添加新聯絡人"
-        >
-          <Text style={styles.addBtnText}>添加聯絡人</Text>
-        </TouchableOpacity>
-      </View>
+      <TouchableOpacity
+        style={styles.addBtn}
+        onPress={() => router.push("/blind/bind")}
+      >
+        <Text style={styles.addBtnText}>添加聯絡人</Text>
+      </TouchableOpacity>
 
       {loading ? (
         <ActivityIndicator
@@ -191,33 +181,26 @@ export default function ContactListScreen() {
         />
       ) : (
         <FlatList
-          data={contacts.filter((c) => !c.is_emergency)}
-          keyExtractor={(item: any) => item.id.toString()}
+          data={contacts}
+          keyExtractor={(item) => item.connection_id.toString()}
           ListHeaderComponent={
             <View>
-              <Text style={styles.sectionTitle} accessibilityRole="header">
-                🔴 當前緊急聯絡人
-              </Text>
+              <Text style={styles.sectionTitle}>🔴 當前緊急聯絡人</Text>
               {emergencyPerson ? (
                 <ContactRow item={emergencyPerson} isEmergency={true} />
               ) : (
-                <View
-                  style={styles.emptyCard}
-                  accessible={true}
-                  accessibilityLabel="目前無緊急聯絡人"
-                >
+                <View style={styles.emptyCard}>
                   <Text style={styles.emptyText}>尚未設定</Text>
                 </View>
               )}
-              <Text
-                style={[styles.sectionTitle, { marginTop: 25 }]}
-                accessibilityRole="header"
-              >
+              <Text style={[styles.sectionTitle, { marginTop: 25 }]}>
                 👥 所有聯絡人名單
               </Text>
             </View>
           }
-          renderItem={({ item }) => <ContactRow item={item} />}
+          renderItem={({ item }) =>
+            item.is_emergency ? null : <ContactRow item={item} />
+          }
           ListEmptyComponent={
             <Text style={styles.emptySubText}>目前沒有好友</Text>
           }
@@ -229,7 +212,6 @@ export default function ContactListScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#F2F2F7", paddingHorizontal: 16 },
-  headerRow: { marginVertical: 16 },
   addBtn: {
     backgroundColor: "#007AFF",
     paddingVertical: 15,

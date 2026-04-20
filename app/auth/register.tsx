@@ -70,7 +70,7 @@ export default function RegisterScreen() {
       });
       const result = await res.json();
       if (result.success) {
-        Alert.alert("註冊成功", "帳號已建立，請登入使用。");
+        Alert.alert("註冊成功", "帳號已建立，正在為您進入系統...");
         await AsyncStorage.setItem("user", JSON.stringify(result.user));
         router.replace(
           result.user.role === "caregiver" ? "/caregiver" : "/blind",

@@ -50,6 +50,7 @@ export default function BlindCameraScreen() {
       });
 
       const result = await response.json();
+      console.log("後端回傳結果:", result);
 
       if (result.success) {
         Alert.alert("🚨 系統提示", "已發送位置通知給所有聯絡人");

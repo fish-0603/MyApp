@@ -4,6 +4,7 @@ import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
   StyleSheet,
   Text,
@@ -22,29 +23,33 @@ interface AlertEvent {
   longitude: string;
 }
 
-// 子組件：地址解析 (維持原邏輯)
+// 獨立組件：地址解析 (優化效能)
 function AddressText({ lat, lng }: { lat: string; lng: string }) {
   const [address, setAddress] = useState("地址讀取中...");
 
   useEffect(() => {
+    let isMounted = true;
     (async () => {
       try {
         const result = await Location.reverseGeocodeAsync({
           latitude: parseFloat(lat),
           longitude: parseFloat(lng),
         });
-        if (result.length > 0) {
+        if (isMounted && result.length > 0) {
           const item = result[0];
           setAddress(
             `${item.city || ""}${item.district || ""}${item.street || ""}`,
           );
-        } else {
+        } else if (isMounted) {
           setAddress("位置不明");
         }
       } catch (e) {
-        setAddress("無法解析地址");
+        if (isMounted) setAddress("無法解析地址");
       }
     })();
+    return () => {
+      isMounted = false;
+    };
   }, [lat, lng]);
 
   return <Text style={styles.detail}>📍 位置：{address}</Text>;
@@ -55,44 +60,41 @@ export default function AlertHistoryScreen() {
   const [history, setHistory] = useState<AlertEvent[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const loadHistory = async () => {
+  const loadHistory = async () => {
+    setLoading(true);
+    try {
       const userData = await AsyncStorage.getItem("user");
-      if (userData) {
-        const user = JSON.parse(userData);
-        try {
-          const res = await fetch(`${BASE_URL}/sos-history/${user.id}`);
-          const result = await res.json();
-          if (result.success) {
-            setHistory(result.requests);
-          }
-        } catch (e) {
-          console.log("連線失敗：", e);
-        }
+      if (!userData) return;
+
+      const user = JSON.parse(userData);
+      const res = await fetch(`${BASE_URL}/sos-history/${user.id}`);
+
+      // 檢查 HTTP 狀態碼，防止 HTML 錯誤頁面導致 JSON 解析崩潰
+      if (!res.ok) throw new Error(`HTTP Error: ${res.status}`);
+
+      const result = await res.json();
+      console.log("後端回傳的資料:", result);
+      if (result.success) {
+        setHistory(result.requests || []);
       }
+    } catch (e) {
+      console.error("載入失敗：", e);
+      Alert.alert("讀取失敗", "無法連線至歷史紀錄伺服器");
+    } finally {
       setLoading(false);
-    };
+    }
+  };
+
+  useEffect(() => {
     loadHistory();
   }, []);
 
-  const renderEventInfo = (eventCode: string) => {
-    if (eventCode === "SOS_BUTTON") {
+  const renderEventInfo = (code: string) => {
+    if (code === "SOS_BUTTON")
       return { label: "🔴 手動求助 (按鈕觸發)", color: "#FF3B30" };
-    } else if (eventCode === "FALL_DETECTION") {
+    if (code === "FALL_DETECTION")
       return { label: "⚠️ 偵測跌倒 (模型識別)", color: "#FF9500" };
-    }
-    return { label: eventCode, color: "#666" };
-  };
-
-  const formatTime = (timeStr: string) => {
-    const date = new Date(timeStr);
-    return date.toLocaleString("zh-TW", {
-      month: "numeric",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: false,
-    });
+    return { label: code, color: "#666" };
   };
 
   return (
@@ -115,7 +117,7 @@ export default function AlertHistoryScreen() {
                 style={styles.card}
                 onPress={() =>
                   router.push({
-                    pathname: "/caregiver/map-detail", // 導向最外層 Stack 頁面
+                    pathname: "/caregiver/map-detail",
                     params: {
                       name: item.name,
                       lat: item.latitude,
@@ -132,7 +134,10 @@ export default function AlertHistoryScreen() {
                     </Text>
                     <Text style={styles.eventLabel}>{eventInfo.label}</Text>
                     <Text style={styles.detail}>
-                      🕒 時間：{formatTime(item.time)}
+                      🕒 時間：
+                      {new Date(item.time).toLocaleString("zh-TW", {
+                        hour12: false,
+                      })}
                     </Text>
                     <AddressText lat={item.latitude} lng={item.longitude} />
                   </View>
@@ -154,6 +159,7 @@ export default function AlertHistoryScreen() {
 }
 
 const styles = StyleSheet.create({
+  /* 樣式維持不變 */
   container: { flex: 1, backgroundColor: "#F2F2F7", paddingHorizontal: 20 },
   title: {
     fontSize: 24,

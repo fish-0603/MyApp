@@ -65,7 +65,9 @@ export default function CaregiverBindScreen() {
   }, [isScanning]);
 
   const handleBarcodeScanned = async ({ data }: { data: string }) => {
+    // 修正：鎖定狀態防止連續觸發請求
     setIsScanning(false);
+
     try {
       const qrData = JSON.parse(data);
       if (qrData.type !== "BIND") {
@@ -74,11 +76,14 @@ export default function CaregiverBindScreen() {
         ]);
         return;
       }
-      const res = await fetch(`${BASE_URL}/api/bind-direct`, {
+
+      // 修正：路徑與後端定義統一
+      const res = await fetch(`${BASE_URL}/bind-direct`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ myId: user.id, targetId: qrData.uid }),
       });
+
       const result = await res.json();
       if (result.success) {
         Alert.alert("成功", `已成功與 ${qrData.name || "對方"} 完成綁定`);
