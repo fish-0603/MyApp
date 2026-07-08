@@ -4,7 +4,7 @@ export default function CaregiverLayout() {
   return (
     <Stack
       screenOptions={{
-        headerStyle: { backgroundColor: "#007AFF" },
+        headerStyle: { backgroundColor: "rgb(0, 0, 0)" },
         headerTintColor: "#fff",
         headerTitleStyle: { fontWeight: "bold" },
         headerTitleAlign: "center",

@@ -194,13 +194,13 @@ const styles = StyleSheet.create({
   detail: { color: "#3A3A3C", marginTop: 4, fontSize: 14 },
   arrow: { fontSize: 18, color: "#C7C7CC", fontWeight: "bold", marginLeft: 10 },
   mapHint: {
-    backgroundColor: "#F0F9FF",
+    backgroundColor: "#dddddd",
     paddingVertical: 6,
     alignItems: "center",
     borderTopWidth: 1,
-    borderTopColor: "#E1F5FE",
+    borderTopColor: "hsl(0, 0%, 84%)",
   },
-  mapHintText: { fontSize: 12, color: "#007AFF", fontWeight: "600" },
+  mapHintText: { fontSize: 12, color: "rgb(0, 0, 0)", fontWeight: "600" },
   emptyText: {
     textAlign: "center",
     color: "#8E8E93",

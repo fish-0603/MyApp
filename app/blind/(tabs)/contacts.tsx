@@ -1,3 +1,4 @@
+import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
@@ -185,7 +186,16 @@ export default function ContactListScreen() {
           keyExtractor={(item) => item.connection_id.toString()}
           ListHeaderComponent={
             <View>
-              <Text style={styles.sectionTitle}>🔴 當前緊急聯絡人</Text>
+              <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 10 }}>
+                <Ionicons
+                  name="alert-circle"
+                  size={22}
+                  color="#FF3B30"
+                  style={{ marginRight: 6, transform: [{ translateY: 2 }] }}
+                />
+                <Text style={[styles.sectionTitle, { marginBottom: 0 }]}>當前緊急聯絡人</Text>
+              </View>
+
               {emergencyPerson ? (
                 <ContactRow item={emergencyPerson} isEmergency={true} />
               ) : (
@@ -193,9 +203,18 @@ export default function ContactListScreen() {
                   <Text style={styles.emptyText}>尚未設定</Text>
                 </View>
               )}
-              <Text style={[styles.sectionTitle, { marginTop: 25 }]}>
-                👥 所有聯絡人名單
-              </Text>
+
+              <View style={{ flexDirection: "row", alignItems: "center", marginTop: 25, marginBottom: 10 }}>
+                <Ionicons
+                  name="people"
+                  size={22}
+                  color="#8E8E93"
+                  style={{ marginRight: 6, transform: [{ translateY: 2 }] }}
+                />
+                <Text style={[styles.sectionTitle, { marginTop: 0, marginBottom: 0 }]}>
+                  所有聯絡人名單
+                </Text>
+              </View>
             </View>
           }
           renderItem={({ item }) =>
@@ -213,7 +232,7 @@ export default function ContactListScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#F2F2F7", paddingHorizontal: 16 },
   addBtn: {
-    backgroundColor: "#007AFF",
+    backgroundColor: "hsl(0, 0%, 17%)",
     paddingVertical: 15,
     borderRadius: 12,
     alignItems: "center",
@@ -250,7 +269,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     marginRight: 8,
   },
-  setBtnText: { color: "#007AFF", fontSize: 14, fontWeight: "600" },
+  setBtnText: { color: "hsl(0, 0%, 17%)", fontSize: 14, fontWeight: "600" },
   removeBtn: {
     backgroundColor: "#FF3B30",
     paddingVertical: 8,

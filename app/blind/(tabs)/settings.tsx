@@ -10,7 +10,7 @@ export default function BlindSettingsScreen() {
     <View style={styles.container}>
       <Button
         title="登出系統"
-        color="#FF3B30"
+        color="hsl(0, 100%, 50%)"
         onPress={() => {
           Alert.alert("確認", "確定要登出嗎？", [
             { text: "取消" },

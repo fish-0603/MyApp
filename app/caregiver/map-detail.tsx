@@ -105,7 +105,7 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
   },
   navBtn: {
-    backgroundColor: "#007AFF",
+    backgroundColor: "rgb(0, 0, 0)",
     padding: 20,
     alignItems: "center",
     margin: 20,

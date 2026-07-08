@@ -1,3 +1,9 @@
+import {
+  GoogleSignin,
+  isErrorWithCode,
+  isSuccessResponse,
+  statusCodes,
+} from "@react-native-google-signin/google-signin";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useState } from "react";
@@ -17,6 +23,7 @@ export default function Login() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const router = useRouter();
 
   const getRoleDisplayName = (role: string | string[] | undefined) => {
@@ -63,6 +70,56 @@ export default function Login() {
       Alert.alert("錯誤", "無法連線至伺服器");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleGoogleSignIn = async () => {
+    setGoogleLoading(true);
+    try {
+      await GoogleSignin.hasPlayServices();
+      const response = await GoogleSignin.signIn();
+      if (!isSuccessResponse(response) || !response.data.idToken) {
+        return;
+      }
+
+      const apiResponse = await fetch(`${BASE_URL}/auth/google`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ idToken: response.data.idToken }),
+      });
+      const data = await apiResponse.json();
+
+      if (!data.success) {
+        Alert.alert("Google 登入失敗", data.message || "請稍後再試");
+        return;
+      }
+
+      if (data.needsProfile) {
+        router.push({
+          pathname: "/auth/complete-profile",
+          params: {
+            googleId: data.googleId,
+            email: data.email || "",
+            suggestedName: data.suggestedName || "",
+            selectedRole,
+          },
+        } as any);
+        return;
+      }
+
+      await AsyncStorage.setItem("user", JSON.stringify(data.user));
+      router.replace(data.user.role === "blind" ? "/blind" : "/caregiver");
+    } catch (e) {
+      if (isErrorWithCode(e) && e.code === statusCodes.SIGN_IN_CANCELLED) {
+        return;
+      }
+      console.error("Google 登入錯誤詳情:", e);
+      Alert.alert(
+        "錯誤",
+        `Google 登入時發生問題: ${isErrorWithCode(e) ? e.code : String(e)}`,
+      );
+    } finally {
+      setGoogleLoading(false);
     }
   };
 
@@ -136,6 +193,22 @@ export default function Login() {
       >
         <Text style={styles.link}>沒有帳號？前往註冊</Text>
       </TouchableOpacity>
+
+      {/* Google 登入按鈕 */}
+      <TouchableOpacity
+        style={styles.googleBtn}
+        onPress={handleGoogleSignIn}
+        disabled={googleLoading}
+        accessible={true}
+        accessibilityLabel="使用 Google 帳號登入"
+        accessibilityRole="button"
+      >
+        {googleLoading ? (
+          <ActivityIndicator color="#333" />
+        ) : (
+          <Text style={styles.googleBtnText}>使用 Google 登入</Text>
+        )}
+      </TouchableOpacity>
     </View>
   );
 }
@@ -148,7 +221,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#f0f2f5",
   },
   backLink: { marginBottom: 20 },
-  backLinkText: { color: "#007AFF", fontSize: 16 },
+  backLinkText: { color: "rgb(8, 14, 19)", fontSize: 16 },
   title: {
     fontSize: 28,
     fontWeight: "bold",
@@ -165,11 +238,21 @@ const styles = StyleSheet.create({
     borderColor: "#ddd",
   },
   btnBlue: {
-    backgroundColor: "#007AFF",
+    backgroundColor: "#000000",
     padding: 15,
     borderRadius: 10,
     alignItems: "center",
   },
   btnText: { color: "#fff", fontSize: 18, fontWeight: "bold" },
-  link: { textAlign: "center", marginTop: 25, color: "#007AFF", fontSize: 16 },
+  link: { textAlign: "center", marginTop: 25, color: "rgb(0, 0, 0)", fontSize: 16 },
+  googleBtn: {
+    marginTop: 20,
+    backgroundColor: "#fff",
+    padding: 15,
+    borderRadius: 10,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#ddd",
+  },
+  googleBtnText: { color: "#333", fontSize: 16, fontWeight: "bold" },
 });

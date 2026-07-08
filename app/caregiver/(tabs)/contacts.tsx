@@ -93,7 +93,7 @@ export default function CaregiverContactScreen() {
       {loading ? (
         <ActivityIndicator
           size="large"
-          color="#007AFF"
+          color="rgb(0, 0, 0)"
           style={{ marginTop: 50 }}
         />
       ) : (
@@ -130,7 +130,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#F2F2F7", paddingHorizontal: 20 },
   headerRow: { marginVertical: 20 },
   addBtn: {
-    backgroundColor: "#007AFF",
+    backgroundColor: "rgb(0, 0, 0)",
     paddingVertical: 16,
     borderRadius: 14,
     alignItems: "center",

@@ -215,8 +215,8 @@ const styles = StyleSheet.create({
     borderColor: "#ddd",
     alignItems: "center",
   },
-  blindActive: { backgroundColor: "#34C759", borderColor: "#34C759" },
-  caregiverActive: { backgroundColor: "#007AFF", borderColor: "#007AFF" },
+  blindActive: { backgroundColor: "hsl(0, 0%, 0%)", borderColor: "#34C759" },
+  caregiverActive: { backgroundColor: "rgb(0, 0, 0)", borderColor: "#007AFF" },
   roleText: { fontSize: 16, fontWeight: "bold", color: "#666" },
   activeText: { color: "#fff" },
   input: {
