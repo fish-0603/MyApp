@@ -20,13 +20,6 @@ try {
   console.log("⚠️ 當前運行於 Expo Go 環境，原生語音監聽模組已安全跳過。");
 }
 
-const labelToChinese: { [key: string]: string } = {
-  car: "前方有車輛",
-  person: "前方有行人",
-  obstacle: "注意，前方有障礙物",
-  stair: "注意，前方有階梯",
-};
-
 export default function BlindCameraScreen() {
   const router = useRouter();
   const isFocused = useIsFocused();
@@ -252,7 +245,8 @@ export default function BlindCameraScreen() {
       console.log("AI 偵測結果:", result);
 
       if (result.success && result.label && isFocused) {
-        const chineseObject = labelToChinese[result.label] || "未知物體";
+        // Python 端已回傳翻譯好的中文物體名稱（如「汽車」「人」），這裡直接使用，不再查字典
+        const chineseObject = result.label;
         let message = `提示，${chineseObject}`;
 
         if (result.distance === "near") {
