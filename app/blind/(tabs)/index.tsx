@@ -212,7 +212,12 @@ export default function BlindCameraScreen() {
   }, [permission, user, isFocused]);
 
   const captureAndSend = async () => {
-    if (!cameraRef.current || isAnalyzing || !isFocused || sosPendingRef.current)
+    if (
+      !cameraRef.current ||
+      isAnalyzing ||
+      !isFocused ||
+      sosPendingRef.current
+    )
       return;
 
     try {
@@ -247,7 +252,13 @@ export default function BlindCameraScreen() {
       if (result.success && result.label && isFocused) {
         // Python 端已回傳翻譯好的中文物體名稱（如「汽車」「人」），這裡直接使用，不再查字典
         const chineseObject = result.label;
-        let message = `提示，${chineseObject}`;
+        // distance_m 有值時（該類別有真實尺寸對照表）才報公尺數，否則退回只報「近/中/遠」語意
+        const hasMeters = result.distance_m !== null && result.distance_m !== undefined;
+        const roundedMeters = hasMeters ? Math.round(result.distance_m * 10) / 10 : null;
+
+        let message = hasMeters
+          ? `前方 ${roundedMeters} 公尺有${chineseObject}`
+          : `前方有${chineseObject}`;
 
         if (result.distance === "near") {
           message = `危險！${chineseObject}距離非常近`;
@@ -366,8 +377,12 @@ export default function BlindCameraScreen() {
             accessibilityLabel={`偵測到求救關鍵字，${sosCountdown} 秒後將自動撥打緊急電話，如不需要請點擊取消`}
           >
             <Text style={styles.voiceIcon}>🚨</Text>
-            <Text style={styles.voiceTitle}>{sosCountdown} 秒後將撥打緊急電話</Text>
-            <Text style={styles.voiceDesc}>不需要請說「取消」，或點擊下方按鈕</Text>
+            <Text style={styles.voiceTitle}>
+              {sosCountdown} 秒後將撥打緊急電話
+            </Text>
+            <Text style={styles.voiceDesc}>
+              不需要請說「取消」，或點擊下方按鈕
+            </Text>
             <TouchableOpacity
               style={styles.cancelSosBtn}
               onPress={cancelSosConfirmation}
