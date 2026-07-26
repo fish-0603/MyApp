@@ -249,27 +249,56 @@ export default function BlindCameraScreen() {
       const result = await response.json();
       console.log("AI 偵測結果:", result);
 
-      if (result.success && result.label && isFocused) {
-        // Python 端已回傳翻譯好的中文物體名稱（如「汽車」「人」），這裡直接使用，不再查字典
-        const chineseObject = result.label;
-        // distance_m 有值時（該類別有真實尺寸對照表）才報公尺數，否則退回只報「近/中/遠」語意
-        const hasMeters = result.distance_m !== null && result.distance_m !== undefined;
-        const roundedMeters = hasMeters ? Math.round(result.distance_m * 10) / 10 : null;
+      if (result.success && isFocused && (result.label || result.trafficLight)) {
+        // 兩段各自獨立：第一段最近障礙物、第二段紅綠燈及目前燈號顏色
+        let objectMessage: string | null = null;
+        if (result.label) {
+          // Python 端已回傳翻譯好的中文物體名稱（如「車」「行人」），這裡直接使用，不再查字典
+          const chineseObject = result.label;
+          // distance_m 有值時（該類別有真實尺寸對照表）才報公尺數，否則退回只報「近/中/遠」語意
+          const hasMeters = result.distance_m !== null && result.distance_m !== undefined;
+          // 取整數公尺：小數點的抖動（7.25→7.35→7.43...）幾乎每幀都不同，
+          // 會被判定成「新訊息」而不斷重新播報，取整數才會在原地不動時維持穩定
+          const roundedMeters = hasMeters ? Math.round(result.distance_m) : null;
 
-        let message = hasMeters
-          ? `前方 ${roundedMeters} 公尺有${chineseObject}`
-          : `前方有${chineseObject}`;
+          objectMessage = hasMeters
+            ? `前方 ${roundedMeters} 公尺有${chineseObject}`
+            : `前方有${chineseObject}`;
 
-        if (result.distance === "near") {
-          message = `危險！${chineseObject}距離非常近`;
+          if (result.distance === "near") {
+            objectMessage = `危險！${chineseObject}距離非常近`;
+          }
         }
 
+        // 紅綠燈不分遠近，只要偵測到就一定播報，接在最近物體後面當下一句
+        const trafficLightMessage = result.trafficLight
+          ? `前方有紅綠燈，現在是${result.trafficLight}`
+          : null;
+
+        const message = [objectMessage, trafficLightMessage]
+          .filter((s): s is string => s !== null)
+          .join("。");
         setInfoText(message);
 
         if (message !== lastSpokenText.current) {
-          Speech.stop();
+          // 不呼叫 Speech.stop()：讓新的播報排隊等目前正在播的內容說完再開始，
+          // 不會把上一次辨識結果的語音講到一半就剪斷
           lastSpokenText.current = message;
-          Speech.speak(message, { language: "zh-TW", rate: 1.1 });
+
+          if (objectMessage && trafficLightMessage) {
+            // 等第一段真正播完（onDone）才播第二段，不會同時搶著播或被剪斷
+            Speech.speak(objectMessage, {
+              language: "zh-TW",
+              rate: 1.1,
+              onDone: () => {
+                Speech.speak(trafficLightMessage, { language: "zh-TW", rate: 1.1 });
+              },
+            });
+          } else if (objectMessage) {
+            Speech.speak(objectMessage, { language: "zh-TW", rate: 1.1 });
+          } else if (trafficLightMessage) {
+            Speech.speak(trafficLightMessage, { language: "zh-TW", rate: 1.1 });
+          }
         }
       }
     } catch (error) {
