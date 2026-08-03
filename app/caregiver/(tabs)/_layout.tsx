@@ -1,32 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { Tabs, useRouter } from "expo-router";
-import { Alert, Text, TouchableOpacity } from "react-native";
+import { Tabs } from "expo-router";
 
 export default function CaregiverTabLayout() {
-  const router = useRouter();
-
-  const SettingButton = () => (
-    <TouchableOpacity
-      onPress={() => {
-        Alert.alert("設定", "確定要登出嗎？", [
-          { text: "取消", style: "cancel" },
-          {
-            text: "登出",
-            style: "destructive",
-            onPress: async () => {
-              await AsyncStorage.clear();
-              router.replace("/");
-            },
-          },
-        ]);
-      }}
-      style={{ marginRight: 15 }}
-    >
-      <Text style={{ fontSize: 22 }}>⚙️</Text>
-    </TouchableOpacity>
-  );
-
   return (
     <Tabs
       screenOptions={{
@@ -44,7 +19,6 @@ export default function CaregiverTabLayout() {
         name="index"
         options={{
           title: "首頁",
-          headerRight: SettingButton,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="home" size={size} color={color} />
           ),

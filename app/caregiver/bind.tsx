@@ -12,7 +12,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { BASE_URL } from "../../constants/config";
+import { authFetch } from "../../utils/api";
 
 const { width } = Dimensions.get("window");
 
@@ -78,7 +78,7 @@ export default function CaregiverBindScreen() {
       }
 
       // 修正：路徑與後端定義統一
-      const res = await fetch(`${BASE_URL}/bind-direct`, {
+      const res = await authFetch(`/bind-direct`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ myId: user.id, targetId: qrData.uid }),

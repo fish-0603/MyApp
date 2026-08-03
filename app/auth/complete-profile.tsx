@@ -11,7 +11,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { BASE_URL } from "../../constants/config";
+import { authFetch } from "../../utils/api";
 
 export default function CompleteProfileScreen() {
   const router = useRouter();
@@ -39,7 +39,7 @@ export default function CompleteProfileScreen() {
 
     setLoading(true);
     try {
-      const res = await fetch(`${BASE_URL}/auth/complete-google-profile`, {
+      const res = await authFetch(`/auth/complete-google-profile`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

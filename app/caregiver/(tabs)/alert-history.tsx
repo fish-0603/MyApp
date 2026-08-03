@@ -12,7 +12,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { BASE_URL } from "../../../constants/config";
+import { authFetch } from "../../../utils/api";
 
 interface AlertEvent {
   id: number;
@@ -67,7 +67,7 @@ export default function AlertHistoryScreen() {
       if (!userData) return;
 
       const user = JSON.parse(userData);
-      const res = await fetch(`${BASE_URL}/sos-history/${user.id}`);
+      const res = await authFetch(`/sos-history/${user.id}`);
 
       // 檢查 HTTP 狀態碼，防止 HTML 錯誤頁面導致 JSON 解析崩潰
       if (!res.ok) throw new Error(`HTTP Error: ${res.status}`);

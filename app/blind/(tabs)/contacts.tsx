@@ -12,7 +12,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { BASE_URL } from "../../../constants/config";
+import { authFetch } from "../../../utils/api";
 
 export default function ContactListScreen() {
   const router = useRouter();
@@ -29,7 +29,7 @@ export default function ContactListScreen() {
       const user = JSON.parse(data);
       setUserId(user.id);
 
-      const res = await fetch(`${BASE_URL}/contacts/${user.id}`);
+      const res = await authFetch(`/contacts/${user.id}`);
       const result = await res.json();
 
       if (result.success) {
@@ -63,7 +63,7 @@ export default function ContactListScreen() {
       {
         text: "確定",
         onPress: async () => {
-          const res = await fetch(`${BASE_URL}/set-emergency`, {
+          const res = await authFetch(`/set-emergency`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ blindId: userId, connectionId }),
@@ -85,7 +85,7 @@ export default function ContactListScreen() {
       {
         text: "確定",
         onPress: async () => {
-          const res = await fetch(`${BASE_URL}/set-emergency`, {
+          const res = await authFetch(`/set-emergency`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ blindId: userId, connectionId: -1 }),
@@ -108,7 +108,7 @@ export default function ContactListScreen() {
         text: "刪除",
         style: "destructive",
         onPress: async () => {
-          const res = await fetch(`${BASE_URL}/reject-bind`, {
+          const res = await authFetch(`/reject-bind`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ connectionId }),

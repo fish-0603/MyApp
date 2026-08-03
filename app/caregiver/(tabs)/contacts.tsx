@@ -11,7 +11,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { BASE_URL } from "../../../constants/config";
+import { authFetch } from "../../../utils/api";
 
 interface Contact {
   id: number;
@@ -32,7 +32,7 @@ export default function CaregiverContactScreen() {
       const data = await AsyncStorage.getItem("user");
       if (!data) return;
       const user = JSON.parse(data);
-      const res = await fetch(`${BASE_URL}/contacts/${user.id}`);
+      const res = await authFetch(`/contacts/${user.id}`);
       const result = await res.json();
       if (result.success) {
         setMonitoredClients(result.contacts);
@@ -58,7 +58,7 @@ export default function CaregiverContactScreen() {
         style: "destructive",
         onPress: async () => {
           try {
-            const res = await fetch(`${BASE_URL}/reject-bind`, {
+            const res = await authFetch(`/reject-bind`, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ connectionId }),

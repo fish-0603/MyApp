@@ -16,7 +16,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { BASE_URL } from "../../constants/config";
+import { authFetch } from "../../utils/api";
 
 export default function Login() {
   const { selectedRole } = useLocalSearchParams();
@@ -38,7 +38,7 @@ export default function Login() {
 
     setLoading(true);
     try {
-      const response = await fetch(`${BASE_URL}/login`, {
+      const response = await authFetch(`/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -82,7 +82,7 @@ export default function Login() {
         return;
       }
 
-      const apiResponse = await fetch(`${BASE_URL}/auth/google`, {
+      const apiResponse = await authFetch(`/auth/google`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ idToken: response.data.idToken }),

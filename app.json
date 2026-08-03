@@ -14,11 +14,6 @@
     },
     "android": {
       "package": "com.myapp.blindguide",
-      "config": {
-        "googleMaps": {
-          "apiKey": "AIzaSyAXgc_b6KWYKz1llOb0tMczwwlH1cChOeM"
-        }
-      },
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
