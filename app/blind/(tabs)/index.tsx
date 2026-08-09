@@ -353,9 +353,11 @@ export default function BlindCameraScreen() {
 
     try {
       isAnalyzingRef.current = true;
+      // quality 從 0.4 調高到 0.6：實測車/機車/腳踏車常常漏偵測，壓縮太多可能是原因之一。
+      // 副作用是照片變大、上傳要多花一點時間，如果網路狀況不好導致明顯變慢，可以再調回去
       const photo = await cameraRef.current.takePictureAsync({
         base64: true,
-        quality: 0.4,
+        quality: 0.6,
         shutterSound: false,
       });
 
@@ -396,35 +398,43 @@ export default function BlindCameraScreen() {
       if (
         result.success &&
         isFocused &&
-        (result.label || result.trafficLight || result.terrainMessage)
+        (result.label || result.crosswalkInMiddle || result.terrainMessage)
       ) {
-        // 依序播報，各段互相獨立：
-        // 1) 最近障礙物（人/機車/汽車/腳踏車/消防栓）＋建議行走方向；
-        //    沒有偵測到物體時，改用 SegFormer 判斷出的人行道方向建議（正前方沒有人行道時，提醒左右哪邊有）
-        // 2) 紅綠燈（配合斑馬線給出請等待/請通行的建議）
+        // 依序播報，兩段互斥、同一輪只會播其中一段：
+        // 1) 斑馬線沒有明顯在正前方（中間區）時，播距離最近的障礙物（人/機車/汽車/腳踏車/
+        //    消防栓/變電箱，不分遠近都可能被選中）＋建議行走方向；沒有偵測到物體時，改用人行道方向建議
+        // 2) 斑馬線在正前方時，過馬路是當下最優先的事，不再播一般障礙物提示，改播「前方有斑馬線，
+        //    現在是什麼燈號」或「前方斑馬線上有什麼障礙物」，最後都會給通行/等待建議
         let objectMessage: string | null = null;
-        if (result.label) {
-          // Python 端已回傳翻譯好的中文物體名稱（如「車」「行人」），這裡直接使用，不再查字典
-          const chineseObject = result.label;
-          const zoneZh = ZONE_ZH[result.zone] ?? "前方";
-          const recommendedZoneZh = ZONE_ZH[result.recommendedZone];
+        if (!result.crosswalkInMiddle) {
+          if (result.label) {
+            // Python 端已回傳翻譯好的中文物體名稱（如「車」「行人」），這裡直接使用，不再查字典
+            const chineseObject = result.label;
+            const zoneZh = ZONE_ZH[result.zone] ?? "前方";
+            const recommendedZoneZh = ZONE_ZH[result.recommendedZone];
 
-          objectMessage = recommendedZoneZh
-            ? `${zoneZh}有${chineseObject}，建議往${recommendedZoneZh}移動`
-            : `${zoneZh}有${chineseObject}`;
-        } else if (result.terrainMessage) {
-          // 後端已經確認這次沒有 YOLO 物體才會回傳人行道方向建議，直接播即可
-          objectMessage = result.terrainMessage;
+            objectMessage = recommendedZoneZh
+              ? `${zoneZh}有${chineseObject}，建議往${recommendedZoneZh}移動`
+              : `${zoneZh}有${chineseObject}`;
+          } else if (result.terrainMessage) {
+            // 後端已經確認這次沒有 YOLO 物體才會回傳人行道方向建議，直接播即可
+            objectMessage = result.terrainMessage;
+          }
         }
 
-        // 紅綠燈：如果同時偵測到斑馬線，燈號狀態跟行動建議一起講；沒有斑馬線時只講燈號狀態
-        const trafficLightMessage = result.trafficLight
-          ? result.crosswalkDetected
-            ? `前方有斑馬線，現在是${result.trafficLight}，${result.trafficLight === "紅燈" ? "請等待" : "請通行"}`
-            : `前方有紅綠燈，現在是${result.trafficLight}`
-          : null;
+        let crossingMessage: string | null = null;
+        if (result.crosswalkInMiddle) {
+          if (result.trafficLight) {
+            const advice = result.trafficLight === "紅燈" ? "請等待" : "請通行";
+            crossingMessage = `前方有斑馬線，現在是${result.trafficLight}，${advice}`;
+          } else if (result.crosswalkObstacle) {
+            crossingMessage = `前方斑馬線上有${result.crosswalkObstacle}，請等待`;
+          } else {
+            crossingMessage = "前方是斑馬線，請通行";
+          }
+        }
 
-        const segments = [objectMessage, trafficLightMessage].filter(
+        const segments = [objectMessage, crossingMessage].filter(
           (s): s is string => s !== null,
         );
         const message = segments.join("。");
