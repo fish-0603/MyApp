@@ -1,6 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useIsFocused } from "@react-navigation/native";
 import { CameraView, useCameraPermissions } from "expo-camera";
+import * as ImageManipulator from "expo-image-manipulator";
 import * as Linking from "expo-linking";
 import * as Location from "expo-location";
 import { useRouter } from "expo-router";
@@ -92,7 +93,7 @@ export default function BlindCameraScreen() {
   // 照片序號，方便在 Node/Python log 對照是哪一張照片產生的結果
   const frameIdRef = useRef(0);
   // 辨識結果從拍照到回來超過這個秒數就不播報（不影響下面的自動求救計數）
-  const RESULT_TTL_SECONDS = 2.0;
+  const RESULT_TTL_SECONDS = 5.0;
 
   // 環境異常自動求救：兩種訊號各自連續達到這個次數（≈60 秒，隨拍照間隔動態換算）才觸發求救倒數；
   // 全黑畫面優先判斷，避免同一次全黑同時被兩邊計數
@@ -431,15 +432,21 @@ export default function BlindCameraScreen() {
 
     try {
       isAnalyzingRef.current = true;
-      // quality 從 0.4 調高到 0.6：實測車/機車/腳踏車常常漏偵測，壓縮太多可能是原因之一。
-      // 副作用是照片變大、上傳要多花一點時間，如果網路狀況不好導致明顯變慢，可以再調回去
       const photo = await cameraRef.current.takePictureAsync({
-        base64: true,
-        quality: 0.6,
         shutterSound: false,
       });
 
-      if (!photo || !photo.base64 || !isFocused) return;
+      if (!photo || !isFocused) return;
+
+      // 手機拍照預設解析度常常是 12MP 以上，遠超過後端模型實際需要的尺寸（YOLO/SegFormer
+      // 內部都會再縮到 960/512），原始解析度整張傳過去只是拖慢上傳，先縮到寬 960 再轉 base64
+      const resized = await ImageManipulator.manipulateAsync(
+        photo.uri,
+        [{ resize: { width: 960 } }],
+        { compress: 0.6, format: ImageManipulator.SaveFormat.JPEG, base64: true },
+      );
+
+      if (!resized.base64 || !isFocused) return;
 
       const currentUserId = user?.id || "test_user_123";
 
@@ -451,7 +458,7 @@ export default function BlindCameraScreen() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           userId: currentUserId,
-          image: photo.base64,
+          image: resized.base64,
           frameId,
           captureTime,
         }),
