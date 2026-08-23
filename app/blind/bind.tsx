@@ -71,7 +71,7 @@ export default function BlindBindScreen() {
 
         <TouchableOpacity
           style={styles.backBtn}
-          onPress={() => router.replace("/blind/contacts")}
+          onPress={() => router.replace("/blind/(tabs)/contacts")}
           accessible={true}
           accessibilityRole="button"
           accessibilityLabel="取消，返回聯絡人列表"

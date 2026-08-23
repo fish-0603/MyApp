@@ -139,15 +139,20 @@ const styles = StyleSheet.create({
     paddingTop: 30,
     backgroundColor: "#F2F2F7",
   },
+
+  // 身分顯示卡片樣式（跟照護者端同款）
   profileCard: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#FFFFFF",
-    padding: 18,
+    backgroundColor: "#FFF",
+    padding: 20,
     borderRadius: 20,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: "#E5E5EA",
+    marginBottom: 20,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    elevation: 3,
   },
   avatarContainer: {
     width: 60,
@@ -156,7 +161,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#E5E5EA",
     justifyContent: "center",
     alignItems: "center",
-    marginRight: 14,
+    marginRight: 16,
   },
   profileInfo: {
     flex: 1,
@@ -165,12 +170,12 @@ const styles = StyleSheet.create({
   userName: {
     fontSize: 22,
     fontWeight: "bold",
-    color: "#000000",
+    color: "#1C1C1E",
     marginBottom: 2,
   },
   userAccount: {
     fontSize: 13,
-    color: "#6C6C70",
+    color: "#8E8E93",
     marginBottom: 8,
   },
   roleBadge: {
@@ -188,52 +193,61 @@ const styles = StyleSheet.create({
     color: "#000000",
   },
 
-  // 編輯個人資料按鈕
+  // 編輯個人資料按鈕樣式（照護者端同款獨立卡片）
   editProfileButton: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#FFFFFF",
+    backgroundColor: "#FFF",
     paddingVertical: 16,
     borderRadius: 16,
-    borderWidth: 1,
-    borderColor: "rgb(0, 0, 0)",
-    marginBottom: 12,
+    marginBottom: 16,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 3,
+    elevation: 2,
   },
   editProfileText: {
     fontSize: 18,
     fontWeight: "bold",
-    color: "rgb(0, 0, 0)",
+    color: "#000000",
   },
 
-  // 常見問題按鈕
+  // 常見問題按鈕樣式
   settingItem: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#FFFFFF",
+    backgroundColor: "#FFF",
     paddingVertical: 16,
     borderRadius: 16,
-    borderWidth: 1,
-    borderColor: "#E5E5EA",
-    marginBottom: 12,
+    marginBottom: 16,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 3,
+    elevation: 2,
   },
   settingText: {
     fontSize: 18,
     fontWeight: "bold",
-    color: "rgb(0, 0, 0)",
+    color: "#000000",
   },
 
-  // 登出按鈕
+  // 登出按鈕樣式
   logoutButton: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#FFFFFF",
+    backgroundColor: "#FFF",
     paddingVertical: 16,
     borderRadius: 16,
-    borderWidth: 1,
-    borderColor: "#FF3B30",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 3,
+    elevation: 2,
   },
   logoutText: {
     fontSize: 18,

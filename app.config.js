@@ -9,6 +9,9 @@ module.exports = {
   ...appJson.expo,
   android: {
     ...appJson.expo.android,
+    // Firebase 專案的 Android 設定檔，prebuild 時會複製進 android/app/ 並自動套用
+    // com.google.gms.google-services Gradle 外掛程式，讓 expo-notifications 能取得原生 FCM token
+    googleServicesFile: "./google-services.json",
     config: {
       googleMaps: {
         apiKey: process.env.GOOGLE_MAPS_API_KEY,

@@ -77,31 +77,64 @@ export default function BlindCameraScreen() {
   const [micDenied, setMicDenied] = useState(false);
   const micDeniedRef = useRef(false);
 
-  // 播報「可以喊哪些關鍵字」提示時，要先暫停語音辨識再開始念，念完才恢復監聽，
-  // 不然手機麥克風會把 App 自己念出的「救命/幫我/出事了/緊急」錄回去，
-  // 被誤判成使用者真的喊了求救關鍵字，觸發一次假的 SOS 倒數
-  const suppressRecognitionRef = useRef(false);
+  // 進場檢查（緊急聯絡人是否綁定＋三項權限）是否已跑完並把播報講完；
+  // 拍照分析迴圈跟語音監聽都要等這個變 true 才開始，避免跟進場播報搶著出聲/搶著監聽
+  const [entryChecksDone, setEntryChecksDone] = useState(false);
+  // 進場檢查發現缺少的權限中文名稱清單，非空時畫面顯示可重試橫幅
+  const [permissionWarning, setPermissionWarning] = useState<string[]>([]);
+  // 進場檢查發現尚未綁定緊急聯絡人
+  const [contactWarning, setContactWarning] = useState(false);
+  // 讓畫面上的「重新開啟權限」按鈕可以呼叫到進場檢查 effect 裡定義的重跑函式
+  const retryEntryChecksRef = useRef<() => void>(() => {});
 
-  // 🌤️ 跌倒偵測：畫面每 5 秒偵測一次，天空佔比連續過高達到這個次數（≈60 秒）才觸發求救確認倒數
-  const FALL_DETECTION_STREAK_NEEDED = 12;
-  const skyStreakRef = useRef(0);
+  // 原本 5 秒一次對移動中的使用者太慢，先抓 2 秒當起點，之後依實測調整
+  const CAPTURE_INTERVAL_MS = 2000;
+  // 照片序號，方便在 Node/Python log 對照是哪一張照片產生的結果
+  const frameIdRef = useRef(0);
+  // 辨識結果從拍照到回來超過這個秒數就不播報（不影響下面的自動求救計數）
+  const RESULT_TTL_SECONDS = 2.0;
 
-  // 進入辨識畫面時，一次檢查相機／麥克風／定位三項必要權限是否都已開啟，
-  // 缺少的用 Alert 提示並可直接前往系統設定；全部就緒的話，用語音（不是畫面文字，
-  // 視障者看不到）告訴使用者可以喊哪些關鍵字觸發語音求救
+  // 環境異常自動求救：兩種訊號各自連續達到這個次數（≈60 秒，隨拍照間隔動態換算）才觸發求救倒數；
+  // 全黑畫面優先判斷，避免同一次全黑同時被兩邊計數
+  const AUTO_SOS_STREAK_NEEDED = Math.round(60000 / CAPTURE_INTERVAL_MS);
+  // 連續一分鐘沒偵測到斑馬線／路緣／草地／馬路／人行道
+  const noTerrainStreakRef = useRef(0);
+  // 連續一分鐘畫面幾乎全黑（手機掉進口袋、螢幕貼地）
+  const blackFrameStreakRef = useRef(0);
+
+  // 每次「進入」畫面（focus，不只是第一次掛載）都要重跑一輪進場檢查：
+  //   1) 是否已綁定緊急聯絡人 2) 相機／麥克風／定位三項權限是否都已開啟
+  // 用語音（不是畫面文字，視障者看不到）依序播報缺少的項目；全部就緒的話播報可以喊哪些
+  // 關鍵字觸發語音求救。播報全部結束後才把 entryChecksDone 設 true——拍照分析迴圈跟語音
+  // 監聽都要等這個變 true 才開始，避免跟這裡的進場播報同時搶著出聲/搶著監聽。
+  //
+  // 權限缺少時不導去系統設定 App（那樣要離開 app），改成只用 request 系列函式重新跳出
+  // 系統權限請求彈窗（彈窗蓋在 app 上，不會切到設定 App），並在畫面上顯示可重按的橫幅。
   useEffect(() => {
+    if (!isFocused) return;
     let cancelled = false;
 
-    const checkAllPermissions = async () => {
+    // 重新進入畫面：清掉上一輪殘留的播報內容/倒數/跌倒計數，這一輪的檢查結果出來前
+    // 先把「已就緒」狀態收回，拍照分析跟語音監聽會因此自動暫停，等這輪檢查播報完再恢復
+    Speech.stop();
+    setInfoText("AI 環境偵測中");
+    lastSpokenText.current = "";
+    noTerrainStreakRef.current = 0;
+    blackFrameStreakRef.current = 0;
+    clearSosCountdown();
+    setEntryChecksDone(false);
+    setPermissionWarning([]);
+    setContactWarning(false);
+
+    const requestAllPermissions = async () => {
       // 1. 相機：AI 障礙偵測必須
       const cameraResult = permission?.granted ? permission : await requestPermission();
 
-      // 2. 麥克風：語音求救必須。這裡只查詢現況，實際要求交給下面的語音辨識 effect 處理，
-      //    避免兩邊同時彈出系統權限視窗
+      // 2. 麥克風：語音求救必須。直接用 request（不是只查詢現況），讓系統彈窗在這裡就跳出來
       let micGranted = true;
       if (ExpoSpeechRecognitionModule) {
-        const micStatus = await ExpoSpeechRecognitionModule.getPermissionsAsync();
-        micGranted = !!micStatus.granted;
+        const micResult = await ExpoSpeechRecognitionModule.requestPermissionsAsync();
+        micGranted = !!micResult.granted;
       }
 
       // 3. 定位：SOS 傳送位置必須，提前在這裡要，不要等真正求救那一刻才要，
@@ -115,59 +148,103 @@ export default function BlindCameraScreen() {
         PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.CALL_PHONE).catch(() => {});
       }
 
-      if (cancelled) return;
-
-      const missing = [
+      return [
         !cameraResult?.granted && "相機",
         !micGranted && "麥克風",
         !locationGranted && "定位",
       ].filter((s): s is string => !!s);
+    };
 
-      if (missing.length > 0) {
-        Alert.alert(
-          "權限尚未完整開啟",
-          `「${missing.join("、")}」權限尚未開啟，AI 障礙偵測／語音求救／緊急定位可能無法正常運作，建議至系統設定開啟。`,
-          [
-            { text: "稍後再說", style: "cancel" },
-            { text: "前往設定", onPress: () => Linking.openSettings() },
-          ],
-        );
-      } else {
-        // 播報前先暫停語音辨識（見 suppressRecognitionRef 說明），避免 App 念關鍵字時
-        // 被自己的麥克風聽到、誤觸發 SOS
-        suppressRecognitionRef.current = true;
-        if (ExpoSpeechRecognitionModule) {
-          try {
-            ExpoSpeechRecognitionModule.stop();
-          } catch (e) {
-            console.error("暫停語音辨識失敗:", e);
-          }
-        }
-
-        const resumeListening = () => {
-          suppressRecognitionRef.current = false;
-          // cancelled 代表畫面在播報途中已經離開/卸載，這時候不該再重新啟動監聽
-          if (cancelled || !ExpoSpeechRecognitionModule || micDeniedRef.current) return;
-          try {
-            ExpoSpeechRecognitionModule.start({ lang: "zh-TW", interimResults: true });
-          } catch (e) {
-            console.error("恢復語音辨識失敗:", e);
-          }
-        };
-
-        Speech.speak(
-          "所有必要權限已開啟，AI 障礙偵測與語音求救已啟動。遭遇危險時，請直接喊出救命、幫我、出事了、或緊急，系統將自動為您定位並撥打緊急電話。",
-          { language: "zh-TW", onDone: resumeListening, onError: resumeListening, onStopped: resumeListening },
-        );
+    // 是否已綁定緊急聯絡人，跟 contacts.tsx 的 emergencyPerson 判斷方式一致
+    // （contacts 陣列裡有沒有 is_emergency === true 的項目）
+    const checkEmergencyContactBound = async () => {
+      try {
+        const raw = await AsyncStorage.getItem("user");
+        if (!raw) return false;
+        const storedUser = JSON.parse(raw);
+        if (!storedUser?.id) return false;
+        const res = await authFetch(`/contacts/${storedUser.id}`);
+        const result = await res.json();
+        if (!result.success) return false;
+        return (result.contacts || []).some((c: any) => c.is_emergency);
+      } catch (e) {
+        console.error("檢查緊急聯絡人失敗:", e);
+        return false;
       }
     };
 
-    checkAllPermissions();
+    const runEntryChecks = async () => {
+      // 也涵蓋畫面上「重新開啟權限」按鈕手動重跑的情況：先停掉可能還在播的舊語音，
+      // 並把「已就緒」收回，讓拍照分析／語音監聽先暫停，等這輪重新檢查播報完再恢復
+      Speech.stop();
+      setEntryChecksDone(false);
+
+      const [contactBound, missing] = await Promise.all([
+        checkEmergencyContactBound(),
+        requestAllPermissions(),
+      ]);
+
+      if (cancelled) return;
+
+      setContactWarning(!contactBound);
+      setPermissionWarning(missing);
+
+      const messages: string[] = [];
+      if (!contactBound) {
+        messages.push(
+          "您尚未綁定緊急聯絡人，緊急求救服務將無法順利啟動，請至聯絡人頁面新增並設定緊急聯絡人。",
+        );
+      }
+      if (missing.length > 0) {
+        messages.push(
+          `「${missing.join("、")}」權限尚未開啟，AI 障礙偵測、語音求救、緊急定位可能無法正常運作，請在剛才系統彈出的權限請求中選擇允許，或點擊畫面上的按鈕重新開啟。`,
+        );
+      }
+      if (contactBound && missing.length === 0) {
+        messages.push(
+          "所有必要權限已開啟，AI 障礙偵測與語音求救已啟動。遭遇危險時，請直接喊出救命、幫我、出事了、或緊急，系統將自動為您定位並撥打緊急電話。",
+        );
+      }
+
+      // cancelled 代表畫面在播報途中已經離開/卸載，這時候不該再把「已就緒」打開
+      const finish = () => {
+        if (cancelled) return;
+        setEntryChecksDone(true);
+      };
+
+      if (messages.length === 0) {
+        finish();
+        return;
+      }
+
+      // 依序播完每一段，等上一段真正播完才播下一段
+      const speakNext = (index: number) => {
+        if (cancelled) return;
+        if (index >= messages.length) {
+          finish();
+          return;
+        }
+        Speech.speak(messages[index], {
+          language: "zh-TW",
+          onDone: () => speakNext(index + 1),
+          onError: () => speakNext(index + 1),
+          onStopped: finish,
+        });
+      };
+      speakNext(0);
+    };
+
+    // 讓畫面上的「重新開啟權限」按鈕可以直接重跑這整輪檢查
+    retryEntryChecksRef.current = () => {
+      runEntryChecks();
+    };
+
+    runEntryChecks();
 
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [isFocused]);
 
   useEffect(() => {
     if (!isFocused) return;
@@ -220,8 +297,9 @@ export default function BlindCameraScreen() {
   };
 
   // 🛡️ 修正卡點：使用標準 useEffect 動態掛載語音監聽，徹底解決條件式 Hook 報錯
+  // 要等 entryChecksDone（進場檢查＋播報都跑完）才開始監聽，避免跟進場播報搶著出聲/搶著監聽
   useEffect(() => {
-    if (!isFocused) return;
+    if (!isFocused || !entryChecksDone) return;
 
     if (!ExpoSpeechRecognitionModule) {
       // Expo Go 環境沒有原生語音監聽模組，但跌倒偵測仍可能觸發 SOS 倒數（跟語音求救共用同一套流程），
@@ -276,9 +354,9 @@ export default function BlindCameraScreen() {
       },
     );
 
-    // 🔄 斷開自動重連機制（權限被拒、或正在暫停監聽播報提示時不自動重啟，避免無窮迴圈／搶著重啟）
+    // 🔄 斷開自動重連機制（權限被拒時不自動重啟，避免無窮迴圈）
     const endListener = ExpoSpeechRecognitionModule.addListener("end", () => {
-      if (isFocused && !micDeniedRef.current && !suppressRecognitionRef.current) {
+      if (isFocused && !micDeniedRef.current) {
         startListening();
       }
     });
@@ -323,24 +401,24 @@ export default function BlindCameraScreen() {
       if (ExpoSpeechRecognitionModule) ExpoSpeechRecognitionModule.stop();
       clearSosCountdown();
     };
-  }, [isFocused]);
+  }, [isFocused, entryChecksDone]);
 
-  // YOLO 每 5 秒定時抓取畫面
+  // YOLO 定時抓取畫面，一樣要等 entryChecksDone 才開始
   useEffect(() => {
-    if (!permission || !permission.granted || !isFocused) {
+    if (!permission || !permission.granted || !isFocused || !entryChecksDone) {
       Speech.stop();
       return;
     }
 
     const interval = setInterval(() => {
       captureAndSend();
-    }, 5000);
+    }, CAPTURE_INTERVAL_MS);
 
     return () => {
       clearInterval(interval);
       Speech.stop();
     };
-  }, [permission, user, isFocused]);
+  }, [permission, user, isFocused, entryChecksDone]);
 
   const captureAndSend = async () => {
     if (
@@ -365,12 +443,17 @@ export default function BlindCameraScreen() {
 
       const currentUserId = user?.id || "test_user_123";
 
+      const frameId = ++frameIdRef.current;
+      const captureTime = Date.now() / 1000;
+
       const response = await authFetch(`/analyze`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           userId: currentUserId,
           image: photo.base64,
+          frameId,
+          captureTime,
         }),
       });
 
@@ -382,20 +465,38 @@ export default function BlindCameraScreen() {
       const result = await response.json();
       console.log("AI 偵測結果:", result);
 
-      // 🌤️ 跌倒偵測：連續偵測到天空佔比過高（鏡頭疑似朝天）達到門檻次數，觸發求救確認倒數，
-      // 跟語音求救共用同一套 5 秒可取消流程，這次不播報物體/紅綠燈，優先處理求救
-      if (result.skyDominant) {
-        skyStreakRef.current += 1;
-        if (skyStreakRef.current >= FALL_DETECTION_STREAK_NEEDED) {
-          skyStreakRef.current = 0;
-          beginSosConfirmation("FALL_DETECTION");
+      const resultAge = Date.now() / 1000 - captureTime;
+      const isStaleResult = resultAge > RESULT_TTL_SECONDS;
+      if (isStaleResult) {
+        console.log(`⏱️ 辨識結果已過期（${resultAge.toFixed(2)}s），略過這次播報`);
+      }
+
+      // 全黑畫面優先判斷：畫面全黑時地面環境自然也偵測不到，直接清空另一邊的計數避免重複算
+      if (result.isBlackFrame) {
+        blackFrameStreakRef.current += 1;
+        noTerrainStreakRef.current = 0;
+        if (blackFrameStreakRef.current >= AUTO_SOS_STREAK_NEEDED) {
+          blackFrameStreakRef.current = 0;
+          beginSosConfirmation("BLACK_SCREEN_DETECTED");
           return;
         }
       } else {
-        skyStreakRef.current = 0;
+        blackFrameStreakRef.current = 0;
+
+        if (!result.terrainDetected) {
+          noTerrainStreakRef.current += 1;
+          if (noTerrainStreakRef.current >= AUTO_SOS_STREAK_NEEDED) {
+            noTerrainStreakRef.current = 0;
+            beginSosConfirmation("NO_TERRAIN_DETECTED");
+            return;
+          }
+        } else {
+          noTerrainStreakRef.current = 0;
+        }
       }
 
       if (
+        !isStaleResult &&
         result.success &&
         isFocused &&
         (result.label || result.crosswalkInMiddle || result.terrainMessage)
@@ -577,24 +678,64 @@ export default function BlindCameraScreen() {
               <Text style={styles.cancelSosText}>取消求救</Text>
             </TouchableOpacity>
           </View>
+        ) : permissionWarning.length > 0 ? (
+          <View
+            style={styles.voiceContainer}
+            pointerEvents="box-none"
+            accessible={true}
+            accessibilityLabel={`「${permissionWarning.join("、")}」權限尚未開啟，AI 障礙偵測、語音求救、緊急定位可能無法正常運作，請點擊下方按鈕重新開啟權限。`}
+          >
+            <Text style={styles.voiceIcon}>⚠️</Text>
+            <Text style={styles.voiceTitle}>權限尚未完整開啟</Text>
+            <Text style={styles.voiceDesc}>缺少：{permissionWarning.join("、")}</Text>
+            <TouchableOpacity
+              style={styles.cancelSosBtn}
+              onPress={() => retryEntryChecksRef.current()}
+              accessible={true}
+              accessibilityLabel="重新開啟權限"
+              accessibilityRole="button"
+            >
+              <Text style={styles.cancelSosText}>重新開啟權限</Text>
+            </TouchableOpacity>
+          </View>
         ) : micDenied ? (
           <View
             style={styles.voiceContainer}
             pointerEvents="box-none"
             accessible={true}
-            accessibilityLabel="語音求救功能需要麥克風權限，請至系統設定開啟後返回此頁面。"
+            accessibilityLabel="語音求救功能需要麥克風權限，請點擊下方按鈕重新開啟。"
           >
             <Text style={styles.voiceIcon}>🔇</Text>
             <Text style={styles.voiceTitle}>語音求救未啟用</Text>
             <Text style={styles.voiceDesc}>需要麥克風權限才能監聽求救語音</Text>
             <TouchableOpacity
               style={styles.cancelSosBtn}
-              onPress={() => Linking.openSettings()}
+              onPress={() => retryEntryChecksRef.current()}
               accessible={true}
-              accessibilityLabel="前往系統設定開啟麥克風權限"
+              accessibilityLabel="重新開啟麥克風權限"
               accessibilityRole="button"
             >
-              <Text style={styles.cancelSosText}>前往設定開啟權限</Text>
+              <Text style={styles.cancelSosText}>重新開啟權限</Text>
+            </TouchableOpacity>
+          </View>
+        ) : contactWarning ? (
+          <View
+            style={styles.voiceContainer}
+            pointerEvents="box-none"
+            accessible={true}
+            accessibilityLabel="尚未綁定緊急聯絡人，緊急求救服務將無法順利啟動，請點擊下方按鈕前往設定。"
+          >
+            <Text style={styles.voiceIcon}>👤</Text>
+            <Text style={styles.voiceTitle}>尚未綁定緊急聯絡人</Text>
+            <Text style={styles.voiceDesc}>緊急求救服務將無法順利啟動</Text>
+            <TouchableOpacity
+              style={styles.cancelSosBtn}
+              onPress={() => router.push("/blind/(tabs)/contacts")}
+              accessible={true}
+              accessibilityLabel="前往設定緊急聯絡人"
+              accessibilityRole="button"
+            >
+              <Text style={styles.cancelSosText}>前往設定聯絡人</Text>
             </TouchableOpacity>
           </View>
         ) : (

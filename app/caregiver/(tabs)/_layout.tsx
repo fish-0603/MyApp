@@ -1,7 +1,15 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Tabs } from "expo-router";
+import { Text } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function CaregiverTabLayout() {
+  // 寫死的 tabBarStyle 會蓋掉 bottom-tabs 自動計算的安全區域 padding，
+  // 沒有另外加回 insets.bottom 的話，在有系統手勢列/三鍵導覽列的手機上，
+  // tab bar 下緣（含文字）會被系統導覽列的半透明遮罩蓋住，視覺上就像文字變灰色，
+  // 跟文字本身顏色設定無關
+  const insets = useSafeAreaInsets();
+
   return (
     <Tabs
       screenOptions={{
@@ -11,8 +19,13 @@ export default function CaregiverTabLayout() {
         headerTitleAlign: "center",
         tabBarActiveTintColor: "hsl(0, 0%, 17%)",
         tabBarInactiveTintColor: "#8E8E93",
-        tabBarStyle: { height: 85, paddingBottom: 10 },
-        tabBarLabelStyle: { fontSize: 14, fontWeight: "600", marginTop: 6 },
+        tabBarStyle: { height: 65 + insets.bottom, paddingBottom: 8 + insets.bottom, paddingTop: 8 },
+        // 圖示下方文字統一用黑色，跟 icon 是否 active 無關（active/inactive 的差異只透過 icon 顏色呈現）
+        tabBarLabel: ({ children }) => (
+          <Text style={{ fontSize: 14, fontWeight: "600", marginTop: 6, color: "#000000" }}>
+            {children}
+          </Text>
+        ),
       }}
     >
       <Tabs.Screen

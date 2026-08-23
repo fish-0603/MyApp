@@ -111,6 +111,7 @@ export default function CompleteProfileScreen() {
       <TextInput
         style={styles.input}
         placeholder="暱稱 *"
+        placeholderTextColor="#999"
         value={fullName}
         onChangeText={setFullName}
         accessible={true}
@@ -119,6 +120,7 @@ export default function CompleteProfileScreen() {
       <TextInput
         style={styles.input}
         placeholder="連絡電話 *"
+        placeholderTextColor="#999"
         keyboardType="phone-pad"
         onChangeText={setPhone}
         accessible={true}
@@ -179,6 +181,7 @@ const styles = StyleSheet.create({
   activeText: { color: "#fff" },
   input: {
     backgroundColor: "#f9f9f9",
+    color: "#000",
     padding: 15,
     borderRadius: 10,
     marginBottom: 15,

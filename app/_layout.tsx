@@ -1,7 +1,19 @@
 import { GoogleSignin } from "@react-native-google-signin/google-signin";
 import { Stack } from "expo-router";
+import * as Notifications from "expo-notifications";
 import React, { useEffect } from "react";
 import { GOOGLE_WEB_CLIENT_ID } from "../constants/config";
+
+// 預設 App 開著（前景）時系統不會跳橫幅通知，只會靜靜觸發監聽器；
+// SOS 通知這種要「馬上被看到」的情境，前景也要跟背景一樣跳出來+響鈴
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowBanner: true,
+    shouldShowList: true,
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+  }),
+});
 
 export default function Layout() {
   useEffect(() => {

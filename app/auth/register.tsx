@@ -132,6 +132,7 @@ export default function RegisterScreen() {
       <TextInput
         style={styles.input}
         placeholder="暱稱 *"
+        placeholderTextColor="#999"
         onChangeText={(v) => setForm({ ...form, full_name: v })}
         accessible={true}
         accessibilityLabel="暱稱"
@@ -139,6 +140,7 @@ export default function RegisterScreen() {
       <TextInput
         style={styles.input}
         placeholder="登入帳號 *"
+        placeholderTextColor="#999"
         autoCapitalize="none"
         onChangeText={(v) => setForm({ ...form, username: v })}
         accessible={true}
@@ -148,6 +150,7 @@ export default function RegisterScreen() {
       <TextInput
         style={styles.input}
         placeholder="設定密碼 *"
+        placeholderTextColor="#999"
         secureTextEntry
         onChangeText={(v) => setForm({ ...form, password: v })}
         accessible={true}
@@ -157,6 +160,7 @@ export default function RegisterScreen() {
       <TextInput
         style={styles.input}
         placeholder="確認密碼 *"
+        placeholderTextColor="#999"
         secureTextEntry
         onChangeText={(v) => setForm({ ...form, confirmPassword: v })}
         accessible={true}
@@ -165,6 +169,7 @@ export default function RegisterScreen() {
       <TextInput
         style={styles.input}
         placeholder="連絡電話 *"
+        placeholderTextColor="#999"
         keyboardType="phone-pad"
         onChangeText={(v) => setForm({ ...form, phone: v })}
         accessible={true}
@@ -174,6 +179,7 @@ export default function RegisterScreen() {
       <TextInput
         style={styles.input}
         placeholder="信箱 (選填)"
+        placeholderTextColor="#999"
         keyboardType="email-address"
         onChangeText={(v) => setForm({ ...form, email: v })}
         accessible={true}
@@ -221,6 +227,7 @@ const styles = StyleSheet.create({
   activeText: { color: "#fff" },
   input: {
     backgroundColor: "#f9f9f9",
+    color: "#000",
     padding: 15,
     borderRadius: 10,
     marginBottom: 15,

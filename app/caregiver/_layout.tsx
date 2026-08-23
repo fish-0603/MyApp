@@ -1,6 +1,14 @@
 import { Stack } from "expo-router";
+import { useEffect } from "react";
+
+import { registerPushToken } from "../../utils/push";
 
 export default function CaregiverLayout() {
+  useEffect(() => {
+    // 每次進到照護者區塊都重新註冊，涵蓋 token 過期或換裝置的情況
+    registerPushToken();
+  }, []);
+
   return (
     <Stack
       screenOptions={{

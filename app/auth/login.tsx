@@ -143,6 +143,7 @@ export default function Login() {
       {/* 帳號輸入框 */}
       <TextInput
         placeholder="請輸入帳號"
+        placeholderTextColor="#999"
         style={styles.input}
         onChangeText={setUsername}
         autoCapitalize="none"
@@ -154,6 +155,7 @@ export default function Login() {
       {/* 密碼輸入框 */}
       <TextInput
         placeholder="請輸入密碼"
+        placeholderTextColor="#999"
         style={styles.input}
         onChangeText={setPassword}
         secureTextEntry
@@ -231,6 +233,7 @@ const styles = StyleSheet.create({
   },
   input: {
     backgroundColor: "#fff",
+    color: "#000",
     padding: 15,
     borderRadius: 10,
     marginBottom: 15,

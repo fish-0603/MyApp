@@ -90,11 +90,11 @@ export default function AlertHistoryScreen() {
   }, []);
 
   const renderEventInfo = (code: string) => {
-    if (code === "SOS_BUTTON")
-      return { label: "🔴 手動求助 (按鈕觸發)", color: "#FF3B30" };
-    if (code === "FALL_DETECTION")
-      return { label: "⚠️ 偵測跌倒 (模型識別)", color: "#FF9500" };
-    return { label: code, color: "#666" };
+    // 非 VOICE_TRIGGER 都算 AI 自動偵測（NO_TERRAIN_DETECTED/BLACK_SCREEN_DETECTED/舊資料的
+    // FALL_DETECTION），對照護者來說是哪個訊號觸發的不重要，統一顯示同一個標籤
+    if (code === "VOICE_TRIGGER")
+      return { label: "🔴 語音主動觸發", color: "#FF3B30" };
+    return { label: "⚠️ 影像識別可能跌倒", color: "#FF9500" };
   };
 
   return (

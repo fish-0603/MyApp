@@ -42,7 +42,14 @@
         }
       ],
       "expo-speech-recognition",
-      "@react-native-google-signin/google-signin"
+      "@react-native-google-signin/google-signin",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/android-icon-foreground.png",
+          "color": "#FF3B30"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,
