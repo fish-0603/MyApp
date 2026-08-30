@@ -88,8 +88,7 @@ export default function BlindCameraScreen() {
   // 讓畫面上的「重新開啟權限」按鈕可以呼叫到進場檢查 effect 裡定義的重跑函式
   const retryEntryChecksRef = useRef<() => void>(() => {});
 
-  // 原本 5 秒一次對移動中的使用者太慢，先抓 2 秒當起點，之後依實測調整
-  const CAPTURE_INTERVAL_MS = 2000;
+  const CAPTURE_INTERVAL_MS = 5000;
   // 照片序號，方便在 Node/Python log 對照是哪一張照片產生的結果
   const frameIdRef = useRef(0);
   // 辨識結果從拍照到回來超過這個秒數就不播報（不影響下面的自動求救計數）
@@ -303,7 +302,8 @@ export default function BlindCameraScreen() {
     if (!isFocused || !entryChecksDone) return;
 
     if (!ExpoSpeechRecognitionModule) {
-      // Expo Go 環境沒有原生語音監聽模組，但跌倒偵測仍可能觸發 SOS 倒數（跟語音求救共用同一套流程），
+      // Expo Go 環境沒有原生語音監聽模組，但「跌倒偵測」（全黑畫面／無地形這兩個自動訊號，
+      // 見上面 blackFrameStreakRef／noTerrainStreakRef）仍可能觸發 SOS 倒數（跟語音求救共用同一套流程），
       // 離開畫面時還是要清掉倒數計時器，不然計時器會在畫面卸載後繼續跑完並自動撥打緊急電話
       return () => {
         clearSosCountdown();
@@ -649,17 +649,6 @@ export default function BlindCameraScreen() {
       />
 
       <SafeAreaView style={styles.overlay} pointerEvents="box-none">
-        {/* 返回按鈕 */}
-        <TouchableOpacity
-          style={styles.backBtn}
-          onPress={() => router.back()}
-          accessible={true}
-          accessibilityLabel="Back to previous page"
-          accessibilityRole="button"
-        >
-          <Text style={styles.backText}>⬅ 返回</Text>
-        </TouchableOpacity>
-
         {/* 語音求助引導說明區塊 */}
         {sosCountdown !== null ? (
           <View
@@ -794,13 +783,6 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     padding: 20,
   },
-  backBtn: {
-    backgroundColor: "rgba(0,0,0,0.6)",
-    padding: 12,
-    borderRadius: 10,
-    alignSelf: "flex-start",
-  },
-  backText: { color: "#FFF", fontWeight: "bold" },
   voiceContainer: {
     flex: 1,
     justifyContent: "center",

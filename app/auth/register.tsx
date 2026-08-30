@@ -27,7 +27,7 @@ export default function RegisterScreen() {
   });
 
   const validate = () => {
-    const { full_name, username, password, confirmPassword, phone } = form;
+    const { full_name, username, password, confirmPassword, phone, email } = form;
     let emptyFields = [];
     if (!full_name.trim()) emptyFields.push("暱稱");
     if (!username.trim()) emptyFields.push("帳號");
@@ -57,6 +57,12 @@ export default function RegisterScreen() {
       Alert.alert("錯誤", "電話格式錯誤 (需為 09xxxxxxxx)");
       return false;
     }
+    // email 選填，有填才檢查格式；沒填的話直接放行
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (email.trim() && !emailRegex.test(email.trim())) {
+      Alert.alert("錯誤", "電子郵件格式錯誤");
+      return false;
+    }
     return true;
   };
 
@@ -70,8 +76,18 @@ export default function RegisterScreen() {
       });
       const result = await res.json();
       if (result.success) {
-        Alert.alert("註冊成功", "帳號已建立，正在為您進入系統...");
         await AsyncStorage.setItem("user", JSON.stringify(result.user));
+        if (form.email.trim()) {
+          router.replace({
+            pathname: "/auth/verify-email",
+            params: {
+              email: form.email.trim(),
+              expiresAt: result.emailVerificationExpiresAt || "",
+            },
+          } as any);
+          return;
+        }
+        Alert.alert("註冊成功", "帳號已建立，正在為您進入系統...");
         router.replace(
           result.user.role === "caregiver" ? "/caregiver" : "/blind",
         );

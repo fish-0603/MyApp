@@ -41,6 +41,9 @@ google-services.json
 # typescript
 *.tsbuildinfo
 
+# logs
+*.log
+
 app-example
 
 # generated native folders

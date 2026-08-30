@@ -43,8 +43,7 @@ export default function CompleteProfileScreen() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          googleId: params.googleId,
-          email: params.email,
+          idToken: params.idToken,
           full_name: fullName,
           phone,
           role,

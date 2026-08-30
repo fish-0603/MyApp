@@ -16,15 +16,26 @@ import {
   View,
 } from "react-native";
 import { authFetch } from "../utils/api";
+import { formatCountdown, useCountdown } from "../utils/useCountdown";
 
 export default function EditNameForm() {
   const [name, setName] = useState("");
   const [nameLoading, setNameLoading] = useState(false);
 
   const [currentEmail, setCurrentEmail] = useState("");
+  const [emailVerified, setEmailVerified] = useState(false);
   const [newEmail, setNewEmail] = useState("");
   const [emailPassword, setEmailPassword] = useState("");
   const [emailLoading, setEmailLoading] = useState(false);
+
+  const [verifyCode, setVerifyCode] = useState("");
+  const [verifyLoading, setVerifyLoading] = useState(false);
+  const [resendLoading, setResendLoading] = useState(false);
+  // 只有觸發過「更新 email」或「重新寄送」才知道確切過期時間；剛進頁面時不知道就是 null，
+  // 不顯示倒數（不代表沒有驗證碼在等，只是這個畫面還沒問過後端）
+  const [verifyExpiresAt, setVerifyExpiresAt] = useState<string | null>(null);
+  const verifyRemainingSeconds = useCountdown(verifyExpiresAt);
+  const verifyIsExpired = verifyRemainingSeconds === 0;
 
   const [oldPassword, setOldPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -56,6 +67,7 @@ export default function EditNameForm() {
         if (response.ok && data.success && data.user) {
           if (data.user.full_name) setName(data.user.full_name);
           if (data.user.email) setCurrentEmail(data.user.email);
+          setEmailVerified(!!data.user.email_verified);
         }
       } catch (error) {
         console.error("無法讀取使用者資料:", error);
@@ -118,6 +130,11 @@ export default function EditNameForm() {
       Alert.alert("提示", "請輸入新的電子郵件");
       return;
     }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(trimmedEmail)) {
+      Alert.alert("提示", "電子郵件格式錯誤");
+      return;
+    }
     if (!emailPassword) {
       Alert.alert("提示", "請輸入密碼以驗證身分");
       return;
@@ -150,14 +167,69 @@ export default function EditNameForm() {
 
       await AsyncStorage.setItem("user", JSON.stringify({ ...user, email: trimmedEmail }));
       setCurrentEmail(trimmedEmail);
+      setEmailVerified(false);
+      setVerifyExpiresAt(data.emailVerificationExpiresAt || null);
+      setVerifyCode("");
       setNewEmail("");
       setEmailPassword("");
-      Alert.alert("成功", "電子郵件已成功更改！");
+      Alert.alert("成功", "電子郵件已成功更改，請至新信箱查看驗證碼完成驗證！");
     } catch (error: any) {
       console.error("更新 Email 失敗:", error);
       Alert.alert("錯誤", error.message || "更新失敗，請確認密碼是否正確");
     } finally {
       setEmailLoading(false);
+    }
+  };
+
+  // D. 輸入驗證碼完成信箱驗證
+  const handleVerifyEmail = async () => {
+    if (!verifyCode.trim()) {
+      Alert.alert("提示", "請輸入驗證碼");
+      return;
+    }
+    setVerifyLoading(true);
+    try {
+      const response = await authFetch(`/verify-email`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: verifyCode.trim() }),
+      });
+      const data = await response.json();
+      if (!response.ok || !data.success) {
+        throw new Error(data.message || "驗證失敗");
+      }
+      setEmailVerified(true);
+      setVerifyCode("");
+      setVerifyExpiresAt(null);
+      Alert.alert("成功", "電子郵件已完成驗證！");
+    } catch (error: any) {
+      console.error("驗證信箱失敗:", error);
+      Alert.alert("錯誤", error.message || "驗證失敗，請確認驗證碼是否正確");
+    } finally {
+      setVerifyLoading(false);
+    }
+  };
+
+  // E. 重新寄送驗證碼
+  const handleResendVerification = async () => {
+    setResendLoading(true);
+    try {
+      const response = await authFetch(`/resend-verification-email`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+      const data = await response.json();
+      if (!response.ok || !data.success) {
+        throw new Error(data.message || "寄送失敗");
+      }
+      setVerifyExpiresAt(data.emailVerificationExpiresAt || null);
+      setVerifyCode("");
+      Alert.alert("已重新寄送", "請至信箱查看新的驗證碼");
+    } catch (error: any) {
+      console.error("重新寄送驗證碼失敗:", error);
+      Alert.alert("錯誤", error.message || "寄送失敗，請稍後再試");
+    } finally {
+      setResendLoading(false);
     }
   };
 
@@ -273,6 +345,62 @@ export default function EditNameForm() {
         <View style={styles.card}>
           <Text style={styles.cardTitle}>變更電子郵件</Text>
           <Text style={styles.currentText}>目前電子郵件：{currentEmail || "未設定"}</Text>
+          {currentEmail ? (
+            <Text
+              style={[
+                styles.verifyStatusText,
+                emailVerified ? styles.verifiedText : styles.unverifiedText,
+              ]}
+            >
+              {emailVerified ? "✓ 已驗證" : "尚未驗證"}
+            </Text>
+          ) : null}
+
+          {currentEmail && !emailVerified ? (
+            <View style={styles.verifyBox}>
+              {verifyRemainingSeconds !== null ? (
+                <Text style={verifyIsExpired ? styles.verifyExpiredText : styles.verifyCountdownText}>
+                  {verifyIsExpired
+                    ? "驗證碼已過期，請重新寄送"
+                    : `驗證碼將於 ${formatCountdown(verifyRemainingSeconds)} 後失效`}
+                </Text>
+              ) : null}
+              <Text style={styles.label}>輸入驗證碼：</Text>
+              <TextInput
+                style={styles.input}
+                value={verifyCode}
+                onChangeText={setVerifyCode}
+                placeholder="6 碼驗證碼"
+                placeholderTextColor="#8E8E93"
+                keyboardType="number-pad"
+                maxLength={6}
+                editable={!verifyIsExpired}
+              />
+              <TouchableOpacity
+                style={[
+                  styles.saveButton,
+                  (verifyLoading || verifyIsExpired) && styles.disabledButton,
+                ]}
+                onPress={handleVerifyEmail}
+                disabled={verifyLoading || verifyIsExpired}
+              >
+                {verifyLoading ? (
+                  <ActivityIndicator color="#FFFFFF" />
+                ) : (
+                  <Text style={styles.saveButtonText}>確認驗證</Text>
+                )}
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={handleResendVerification}
+                disabled={resendLoading}
+                style={styles.resendLink}
+              >
+                <Text style={styles.resendLinkText}>
+                  {resendLoading ? "寄送中..." : "沒收到驗證碼？重新寄送"}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          ) : null}
 
           <Text style={styles.label}>新的電子郵件：</Text>
           <TextInput
@@ -407,7 +535,43 @@ const styles = StyleSheet.create({
   currentText: {
     fontSize: 14,
     color: "#6C6C70",
+    marginBottom: 4,
+  },
+  verifyStatusText: {
+    fontSize: 13,
+    fontWeight: "600",
     marginBottom: 12,
+  },
+  verifiedText: {
+    color: "#34C759",
+  },
+  unverifiedText: {
+    color: "#FF9500",
+  },
+  verifyBox: {
+    backgroundColor: "#F2F2F7",
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 16,
+  },
+  verifyCountdownText: {
+    fontSize: 13,
+    color: "#8E8E93",
+    marginBottom: 10,
+  },
+  verifyExpiredText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#FF3B30",
+    marginBottom: 10,
+  },
+  resendLink: {
+    marginTop: 10,
+    alignItems: "center",
+  },
+  resendLinkText: {
+    color: "#007AFF",
+    fontSize: 14,
   },
   label: {
     fontSize: 15,

@@ -98,8 +98,7 @@ export default function Login() {
         router.push({
           pathname: "/auth/complete-profile",
           params: {
-            googleId: data.googleId,
-            email: data.email || "",
+            idToken: data.idToken,
             suggestedName: data.suggestedName || "",
             selectedRole,
           },
