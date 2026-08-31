@@ -6,6 +6,7 @@ import {
   ActivityIndicator,
   Alert,
   FlatList,
+  RefreshControl,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -19,10 +20,12 @@ export default function ContactListScreen() {
   const [contacts, setContacts] = useState<any[]>([]);
   const [userId, setUserId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
-  const loadContacts = async () => {
+  const loadContacts = async (isRefresh = false) => {
     try {
-      setLoading(true);
+      if (isRefresh) setRefreshing(true);
+      else setLoading(true);
       const data = await AsyncStorage.getItem("user");
       if (!data) return;
 
@@ -39,7 +42,8 @@ export default function ContactListScreen() {
       console.error("載入失敗:", e);
       Alert.alert("錯誤", "無法讀取聯絡人清單");
     } finally {
-      setLoading(false);
+      if (isRefresh) setRefreshing(false);
+      else setLoading(false);
     }
   };
 
@@ -58,7 +62,7 @@ export default function ContactListScreen() {
       );
       return;
     }
-    Alert.alert("設定確認", `確定將「${name}」設為緊急聯絡人嗎？`, [
+    Alert.alert("設為緊急聯絡人", `確定要將「${name}」設為緊急聯絡人嗎？`, [
       { text: "取消", style: "cancel" },
       {
         text: "確定",
@@ -79,8 +83,8 @@ export default function ContactListScreen() {
   };
 
   // 2. 取消緊急聯絡人 (加入確認視窗)
-  const handleRemoveEmergency = async (connectionId: number) => {
-    Alert.alert("取消確認", "確定要取消目前的緊急聯絡人設定嗎？", [
+  const handleRemoveEmergency = async (connectionId: number, name: string) => {
+    Alert.alert("取消緊急聯絡人設定", `確定要取消「${name}」的緊急聯絡人資格嗎？`, [
       { text: "取消", style: "cancel" },
       {
         text: "確定",
@@ -101,8 +105,8 @@ export default function ContactListScreen() {
   };
 
   // 3. 刪除聯絡人 (加入確認視窗)
-  const handleDeleteContact = async (connectionId: number) => {
-    Alert.alert("刪除確認", "確定要將此聯絡人從好友名單移除嗎？", [
+  const handleDeleteContact = async (connectionId: number, name: string) => {
+    Alert.alert("刪除好友", `確定要刪除「${name}」嗎？`, [
       { text: "取消", style: "cancel" },
       {
         text: "刪除",
@@ -139,7 +143,9 @@ export default function ContactListScreen() {
         {isEmergency ? (
           <TouchableOpacity
             style={styles.removeBtn}
-            onPress={() => handleRemoveEmergency(item.connection_id)}
+            onPress={() =>
+              handleRemoveEmergency(item.connection_id, item.username)
+            }
           >
             <Text style={styles.removeBtnText}>取消緊急</Text>
           </TouchableOpacity>
@@ -155,7 +161,9 @@ export default function ContactListScreen() {
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.deleteBtn}
-              onPress={() => handleDeleteContact(item.connection_id)}
+              onPress={() =>
+                handleDeleteContact(item.connection_id, item.username)
+              }
             >
               <Text style={styles.deleteBtnText}>刪除</Text>
             </TouchableOpacity>
@@ -184,6 +192,12 @@ export default function ContactListScreen() {
         <FlatList
           data={contacts}
           keyExtractor={(item) => item.connection_id.toString()}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={() => loadContacts(true)}
+            />
+          }
           ListHeaderComponent={
             <View>
               <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 10 }}>

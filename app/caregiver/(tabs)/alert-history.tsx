@@ -6,6 +6,7 @@ import {
   ActivityIndicator,
   Alert,
   FlatList,
+  RefreshControl,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -59,9 +60,11 @@ export default function AlertHistoryScreen() {
   const router = useRouter();
   const [history, setHistory] = useState<AlertEvent[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
-  const loadHistory = async () => {
-    setLoading(true);
+  const loadHistory = async (isRefresh = false) => {
+    if (isRefresh) setRefreshing(true);
+    else setLoading(true);
     try {
       const userData = await AsyncStorage.getItem("user");
       if (!userData) return;
@@ -81,7 +84,8 @@ export default function AlertHistoryScreen() {
       console.error("載入失敗：", e);
       Alert.alert("讀取失敗", "無法連線至歷史紀錄伺服器");
     } finally {
-      setLoading(false);
+      if (isRefresh) setRefreshing(false);
+      else setLoading(false);
     }
   };
 
@@ -110,6 +114,12 @@ export default function AlertHistoryScreen() {
         <FlatList
           data={history}
           keyExtractor={(item) => item.id.toString()}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={() => loadHistory(true)}
+            />
+          }
           renderItem={({ item }) => {
             const eventInfo = renderEventInfo(item.event);
             return (

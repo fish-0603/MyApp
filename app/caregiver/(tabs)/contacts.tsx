@@ -5,6 +5,7 @@ import {
   ActivityIndicator,
   Alert,
   FlatList,
+  RefreshControl,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -24,10 +25,12 @@ export default function CaregiverContactScreen() {
   const router = useRouter();
   const [monitoredClients, setMonitoredClients] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
   // 每次進入頁面自動刷新好友列表
-  const loadMonitoredClients = useCallback(async () => {
-    setLoading(true);
+  const loadMonitoredClients = useCallback(async (isRefresh = false) => {
+    if (isRefresh) setRefreshing(true);
+    else setLoading(true);
     try {
       const data = await AsyncStorage.getItem("user");
       if (!data) return;
@@ -40,7 +43,8 @@ export default function CaregiverContactScreen() {
     } catch (e) {
       console.error("連線失敗:", e);
     } finally {
-      setLoading(false);
+      if (isRefresh) setRefreshing(false);
+      else setLoading(false);
     }
   }, []);
 
@@ -68,6 +72,9 @@ export default function CaregiverContactScreen() {
               setMonitoredClients((prev) =>
                 prev.filter((c) => c.connection_id !== connectionId),
               );
+              Alert.alert("已刪除", `已成功刪除與「${name}」的綁定`);
+            } else {
+              Alert.alert("錯誤", result.message || "無法刪除好友");
             }
           } catch (e) {
             Alert.alert("錯誤", "無法刪除好友");
@@ -100,6 +107,12 @@ export default function CaregiverContactScreen() {
         <FlatList
           data={monitoredClients}
           keyExtractor={(item) => item.connection_id.toString()}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={() => loadMonitoredClients(true)}
+            />
+          }
           renderItem={({ item }) => (
             <View style={styles.card}>
               <View style={styles.infoSection}>

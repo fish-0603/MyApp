@@ -98,7 +98,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
   },
-  blindBtn: { backgroundColor: "#34C759" },
-  caregiverBtn: { backgroundColor: "#007AFF" },
+  blindBtn: { backgroundColor: "#000" },
+  caregiverBtn: { backgroundColor: "#000" },
   roleText: { color: "#fff", fontSize: 20, fontWeight: "bold" },
 });

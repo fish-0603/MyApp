@@ -70,7 +70,7 @@ export default function MapDetailScreen() {
           )
         }
       >
-        <Text style={styles.navBtnText}>開啟導航前往</Text>
+        <Text style={styles.navBtnText}>開啟導航</Text>
       </TouchableOpacity>
     </SafeAreaView>
   );

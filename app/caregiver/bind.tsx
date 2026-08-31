@@ -71,9 +71,11 @@ export default function CaregiverBindScreen() {
     try {
       const qrData = JSON.parse(data);
       if (qrData.type !== "BIND") {
-        Alert.alert("錯誤", "無效的 QR Code", [
-          { text: "重試", onPress: () => setIsScanning(true) },
-        ]);
+        Alert.alert(
+          "QR Code 無效",
+          "此 QR Code 無法辨識，請確認 QR Code 是否正確後重新掃描。",
+          [{ text: "重試", onPress: () => setIsScanning(true) }],
+        );
         return;
       }
 
@@ -86,8 +88,19 @@ export default function CaregiverBindScreen() {
 
       const result = await res.json();
       if (result.success) {
-        Alert.alert("成功", `已成功與 ${qrData.name || "對方"} 完成綁定`);
-        router.replace("/caregiver/(tabs)/contacts");
+        Alert.alert("綁定成功", "已成功新增好友。", [
+          {
+            text: "確認",
+            onPress: () => router.replace("/caregiver/(tabs)/contacts"),
+          },
+        ]);
+      } else if (result.message === "已經綁定") {
+        Alert.alert("好友已綁定", "此好友已經綁定，無法重複新增。", [
+          {
+            text: "確定",
+            onPress: () => router.replace("/caregiver/(tabs)/contacts"),
+          },
+        ]);
       } else {
         Alert.alert("提示", result.message, [
           {
@@ -97,9 +110,11 @@ export default function CaregiverBindScreen() {
         ]);
       }
     } catch (e) {
-      Alert.alert("解析失敗", "無法辨識此 QR Code 的內容", [
-        { text: "重試", onPress: () => setIsScanning(true) },
-      ]);
+      Alert.alert(
+        "QR Code 無效",
+        "此 QR Code 無法辨識，請確認 QR Code 是否正確後重新掃描。",
+        [{ text: "重試", onPress: () => setIsScanning(true) }],
+      );
     }
   };
 

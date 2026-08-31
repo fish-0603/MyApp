@@ -45,6 +45,10 @@ export default function Layout() {
         name="auth/complete-profile"
         options={{ title: "補齊資料", headerBackVisible: false }}
       />
+      <Stack.Screen
+        name="auth/verify-email"
+        options={{ title: "驗證信箱", headerBackVisible: false }}
+      />
 
       {/* 盲人與照顧者端完全下放權限 */}
       <Stack.Screen name="blind" options={{ headerShown: false }} />
