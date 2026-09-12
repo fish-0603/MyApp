@@ -82,10 +82,10 @@ export default function CaregiverSettingsScreen() {
       {/* 編輯個人資料按鈕（比照盲人端排版） */}
       <TouchableOpacity
         style={styles.editProfileButton}
-        onPress={() => router.push("/caregiver/edit-name")}
+        onPress={() => router.push("/caregiver/profile-edit")}
         accessible={true}
         accessibilityLabel="編輯個人資料"
-        accessibilityHint="點擊後開啟修改名稱頁面"
+        accessibilityHint="點擊後開啟編輯個人資料選單"
         accessibilityRole="button"
       >
         <Ionicons name="create-outline" size={22} color="rgb(0, 0, 0)" style={{ marginRight: 8 }} />
